@@ -12,6 +12,9 @@ export const DEFAULT_AUTHOR = 'HOBNOVA編集部';
 // TODO: 1200x630のOGP用画像を public/og-default.png に配置する
 export const DEFAULT_OG_IMAGE = '/og-default.png';
 
+// Google Tag Manager コンテナID。全ページ共通でBaseLayout.astroから読み込む。
+export const GTM_ID = 'GTM-T3RWG7HD';
+
 export type CategoryId = 'camp' | 'gadget' | 'data-lab' | 'marketing' | 'tools';
 
 // 通常記事（Content Collections の articles）が対応するカテゴリ。
