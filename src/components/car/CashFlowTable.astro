@@ -1,0 +1,58 @@
+---
+// Tesla / LEXUS の5年間キャッシュフロー表（購入時→1〜5年目→売却）。
+// 支出はマイナス表記、補助金・売却額はプラス表記で視覚的に区別する。
+interface YearRow {
+  label: string;
+  items: { name: string; value: number }[]; // 万円。マイナス=支出、プラス=収入
+}
+
+interface Props {
+  title: string;
+  rows: YearRow[];
+  accentClass?: string; // 見出し帯の色（Teslaは navy、LEXUSは charcoal 等で使い分け）
+}
+
+const { title, rows, accentClass = 'bg-navy' } = Astro.props;
+
+function total(items: { name: string; value: number }[]): number {
+  return items.reduce((sum, i) => sum + i.value, 0);
+}
+
+const fmt = (n: number) => `${n >= 0 ? '+' : ''}${n.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}万円`;
+---
+
+<div class="overflow-x-auto rounded-xl border border-border bg-white">
+  <div class:list={['px-4 py-2.5 text-sm font-semibold text-white', accentClass]}>{title}</div>
+  <table class="w-full min-w-[560px] text-left text-xs sm:text-sm">
+    <tbody class="divide-y divide-border">
+      {
+        rows.map((row) => {
+          const rowTotal = total(row.items);
+          return (
+            <tr>
+              <th scope="row" class="w-20 shrink-0 bg-bg-light px-3 py-2 align-middle font-semibold text-navy">
+                {row.label}
+              </th>
+              <td class="px-3 py-2 align-middle">
+                <ul class="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {row.items
+                    .filter((i) => i.value !== 0)
+                    .map((i) => (
+                      <li class:list={['whitespace-nowrap', i.value > 0 ? 'text-accent' : 'text-charcoal/70']}>
+                        {i.name}
+                        <span class="ml-1 font-medium tabular-nums">{fmt(i.value)}</span>
+                      </li>
+                    ))}
+                  {row.items.every((i) => i.value === 0) && <li class="text-charcoal/40">-</li>}
+                </ul>
+              </td>
+              <td class:list={['w-24 shrink-0 px-3 py-2 text-right align-middle font-bold tabular-nums', rowTotal >= 0 ? 'text-accent' : 'text-navy']}>
+                {fmt(rowTotal)}
+              </td>
+            </tr>
+          );
+        })
+      }
+    </tbody>
+  </table>
+</div>

@@ -17,13 +17,14 @@ const { id, type, labels, series } = Astro.props;
 ---
 
 <div class="rounded-xl border border-border bg-white p-5">
-  <canvas
-    id={id}
-    height="260"
-    data-chart-type={type}
-    data-chart-labels={JSON.stringify(labels)}
-    data-chart-series={JSON.stringify(series)}
-  ></canvas>
+  <div class="h-56 sm:h-64">
+    <canvas
+      id={id}
+      data-chart-type={type}
+      data-chart-labels={JSON.stringify(labels)}
+      data-chart-series={JSON.stringify(series)}
+    ></canvas>
+  </div>
 </div>
 
 <script>
@@ -60,6 +61,7 @@ const { id, type, labels, series } = Astro.props;
       data: { labels, datasets },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: { display: series.length > 1 || type === 'pie' },
         },

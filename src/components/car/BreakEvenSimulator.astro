@@ -1,0 +1,253 @@
+---
+// タイムズカー vs Tesla Model Y L vs LEXUS RX350h の損益分岐シミュレーター。
+// 前提条件（車両価格・補助金・保険料など）は固定し、利用状況や駐車場代・
+// 残価率など変動が大きい7項目だけをユーザーが調整できるようにしている。
+// 計算式は本文の「本記事の試算条件」セクションと一致させること。
+---
+
+<div class="rounded-xl border border-border bg-white p-5 sm:p-6" id="bes-root">
+  <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+    <label class="block text-sm">
+      <span class="flex justify-between text-charcoal/70">
+        <span>月間タイムズカー利用回数</span>
+        <span class="font-semibold text-navy" id="bes-uses-val">6回</span>
+      </span>
+      <input id="bes-uses" type="range" min="0" max="15" step="1" value="6" class="mt-2 w-full accent-accent" />
+    </label>
+
+    <label class="block text-sm">
+      <span class="flex justify-between text-charcoal/70">
+        <span>1回あたり利用時間</span>
+        <span class="font-semibold text-navy" id="bes-hours-val">23.3時間</span>
+      </span>
+      <input id="bes-hours" type="range" min="1" max="24" step="0.1" value="23.3" class="mt-2 w-full accent-accent" />
+    </label>
+
+    <label class="block text-sm">
+      <span class="flex justify-between text-charcoal/70">
+        <span>1回あたり走行距離</span>
+        <span class="font-semibold text-navy" id="bes-km-val">139km</span>
+      </span>
+      <input id="bes-km" type="range" min="0" max="300" step="1" value="139" class="mt-2 w-full accent-accent" />
+    </label>
+
+    <label class="block text-sm">
+      <span class="flex justify-between text-charcoal/70">
+        <span>年間自家用車走行距離</span>
+        <span class="font-semibold text-navy" id="bes-annualkm-val">10,000km</span>
+      </span>
+      <input id="bes-annualkm" type="range" min="3000" max="25000" step="500" value="10000" class="mt-2 w-full accent-accent" />
+    </label>
+
+    <label class="block text-sm">
+      <span class="flex justify-between text-charcoal/70">
+        <span>新宿区 月極駐車場料金</span>
+        <span class="font-semibold text-navy" id="bes-parking-val">33,727円</span>
+      </span>
+      <input id="bes-parking" type="range" min="10000" max="55000" step="1" value="33727" class="mt-2 w-full accent-accent" />
+    </label>
+
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block text-sm">
+        <span class="flex justify-between text-charcoal/70">
+          <span>Tesla残価率</span>
+          <span class="font-semibold text-navy" id="bes-tesla-residual-val">40%</span>
+        </span>
+        <input id="bes-tesla-residual" type="range" min="10" max="80" step="5" value="40" class="mt-2 w-full accent-accent" />
+      </label>
+      <label class="block text-sm">
+        <span class="flex justify-between text-charcoal/70">
+          <span>LEXUS残価率</span>
+          <span class="font-semibold text-navy" id="bes-lexus-residual-val">60%</span>
+        </span>
+        <input id="bes-lexus-residual" type="range" min="10" max="80" step="5" value="60" class="mt-2 w-full accent-accent" />
+      </label>
+    </div>
+  </div>
+
+  <div class="mt-6 grid gap-3 sm:grid-cols-3">
+    <div class="rounded-lg bg-bg-light p-4">
+      <p class="text-[11px] text-charcoal/50">Tesla Model Y L（5年間）</p>
+      <p class="mt-1 text-lg font-bold text-navy" id="bes-tesla-total">-</p>
+      <p class="text-[11px] text-charcoal/50" id="bes-tesla-monthly">-</p>
+    </div>
+    <div class="rounded-lg bg-bg-light p-4">
+      <p class="text-[11px] text-charcoal/50">LEXUS RX350h（5年間）</p>
+      <p class="mt-1 text-lg font-bold text-navy" id="bes-lexus-total">-</p>
+      <p class="text-[11px] text-charcoal/50" id="bes-lexus-monthly">-</p>
+    </div>
+    <div class="rounded-lg bg-accent/10 p-4">
+      <p class="text-[11px] text-charcoal/50">タイムズカー（5年間・現在の設定）</p>
+      <p class="mt-1 text-lg font-bold text-navy" id="bes-times-total">-</p>
+      <p class="text-[11px] text-charcoal/50" id="bes-times-monthly">-</p>
+    </div>
+  </div>
+
+  <div class="mt-6 space-y-2 rounded-lg border border-accent/30 bg-accent/5 p-4 text-sm">
+    <p id="bes-breakeven-tesla" class="font-medium text-navy">-</p>
+    <p id="bes-breakeven-lexus" class="font-medium text-navy">-</p>
+  </div>
+
+  <div class="mt-6 h-56 sm:h-64">
+    <canvas id="bes-chart"></canvas>
+  </div>
+
+  <p class="mt-3 text-[11px] text-charcoal/50">
+    グラフの横軸は月間利用回数（0〜15回）。タイムズカーの線は「1回あたり利用時間・走行距離」を固定した比例モデルで、Tesla・LEXUSの線は5年間の実質所有コストを60ヶ月で割った定額です。
+  </p>
+</div>
+
+<script>
+  import Chart from 'chart.js/auto';
+
+  // ---- 固定の試算条件（本文の「本記事の試算条件」と一致させること） ----
+  const TESLA_PRICE = 749; // 万円
+  const TESLA_CEV = 127;
+  const TESLA_TOKYO = 70;
+  const TESLA_INSURANCE = 15; // 万円/年
+  const TESLA_TAX = 2.5;
+  const TESLA_MAINT = 5;
+  const TESLA_CHARGE_PER_10000KM = 5;
+  const TESLA_SHAKEN_TIRE_Y3 = 12 + 8;
+
+  const LEXUS_PRICE = 811;
+  const LEXUS_INSURANCE = 12;
+  const LEXUS_TAX = 4.35;
+  const LEXUS_MAINT = 6;
+  const LEXUS_FUEL_ECONOMY = 18.7; // km/L
+  const LEXUS_FUEL_PRICE = 181; // 円/L（ハイオク・東京平均目安）
+  const LEXUS_SHAKEN_TIRE_Y3 = 15 + 9;
+
+  const TIMES_BASE_FEE = 880; // 円/月
+  const TIMES_PACK_24H = 6600; // 円
+  const TIMES_FREE_KM = 20;
+  const TIMES_KM_RATE = 20; // 円/km
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  const els = {
+    uses: $<HTMLInputElement>('bes-uses'),
+    hours: $<HTMLInputElement>('bes-hours'),
+    km: $<HTMLInputElement>('bes-km'),
+    annualKm: $<HTMLInputElement>('bes-annualkm'),
+    parking: $<HTMLInputElement>('bes-parking'),
+    teslaResidual: $<HTMLInputElement>('bes-tesla-residual'),
+    lexusResidual: $<HTMLInputElement>('bes-lexus-residual'),
+  };
+
+  const yen = (n: number) => `${Math.round(n).toLocaleString('ja-JP')}円`;
+  const man = (n: number) => `約${n.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}万円`;
+
+  function teslaTotalMan(parkingMonthlyYen: number, residualPct: number, annualKm: number) {
+    const parkingYr = (parkingMonthlyYen * 12) / 10000;
+    const chargeYr = TESLA_CHARGE_PER_10000KM * (annualKm / 10000);
+    const netPurchase = TESLA_PRICE - TESLA_CEV - TESLA_TOKYO;
+    const yearly = parkingYr + TESLA_INSURANCE + chargeYr + TESLA_TAX + TESLA_MAINT;
+    const resale = TESLA_PRICE * (residualPct / 100);
+    return netPurchase + 5 * yearly + TESLA_SHAKEN_TIRE_Y3 - resale;
+  }
+
+  function lexusTotalMan(parkingMonthlyYen: number, residualPct: number, annualKm: number) {
+    const parkingYr = (parkingMonthlyYen * 12) / 10000;
+    const fuelYr = (annualKm / LEXUS_FUEL_ECONOMY) * (LEXUS_FUEL_PRICE / 10000);
+    const yearly = parkingYr + LEXUS_INSURANCE + fuelYr + LEXUS_TAX + LEXUS_MAINT;
+    const resale = LEXUS_PRICE * (residualPct / 100);
+    return LEXUS_PRICE + 5 * yearly + LEXUS_SHAKEN_TIRE_Y3 - resale;
+  }
+
+  function timesCarPerUseYen(hoursPerUse: number, kmPerUse: number) {
+    const timeCharge = (hoursPerUse / 24) * TIMES_PACK_24H;
+    const distCharge = Math.max(0, kmPerUse - TIMES_FREE_KM) * TIMES_KM_RATE;
+    return timeCharge + distCharge;
+  }
+
+  function timesCarMonthlyYen(uses: number, hoursPerUse: number, kmPerUse: number) {
+    if (uses <= 0) return TIMES_BASE_FEE;
+    return Math.max(TIMES_BASE_FEE, uses * timesCarPerUseYen(hoursPerUse, kmPerUse));
+  }
+
+  let chart: Chart | undefined;
+
+  function calc() {
+    const uses = Number(els.uses.value);
+    const hours = Number(els.hours.value);
+    const km = Number(els.km.value);
+    const annualKm = Number(els.annualKm.value);
+    const parking = Number(els.parking.value);
+    const teslaResidual = Number(els.teslaResidual.value);
+    const lexusResidual = Number(els.lexusResidual.value);
+
+    $('bes-uses-val').textContent = `${uses}回`;
+    $('bes-hours-val').textContent = `${hours.toFixed(1)}時間`;
+    $('bes-km-val').textContent = `${km}km`;
+    $('bes-annualkm-val').textContent = `${annualKm.toLocaleString('ja-JP')}km`;
+    $('bes-parking-val').textContent = `${parking.toLocaleString('ja-JP')}円`;
+    $('bes-tesla-residual-val').textContent = `${teslaResidual}%`;
+    $('bes-lexus-residual-val').textContent = `${lexusResidual}%`;
+
+    const teslaTotal = teslaTotalMan(parking, teslaResidual, annualKm);
+    const lexusTotal = lexusTotalMan(parking, lexusResidual, annualKm);
+    const teslaMonthlyYen = (teslaTotal * 10000) / 60;
+    const lexusMonthlyYen = (lexusTotal * 10000) / 60;
+    const timesMonthlyYen = timesCarMonthlyYen(uses, hours, km);
+    const timesTotal = (timesMonthlyYen * 12 * 5) / 10000;
+
+    $('bes-tesla-total').textContent = man(teslaTotal);
+    $('bes-tesla-monthly').textContent = `実質月額 ${yen(teslaMonthlyYen)}`;
+    $('bes-lexus-total').textContent = man(lexusTotal);
+    $('bes-lexus-monthly').textContent = `実質月額 ${yen(lexusMonthlyYen)}`;
+    $('bes-times-total').textContent = man(timesTotal);
+    $('bes-times-monthly').textContent = `月額 ${yen(timesMonthlyYen)}（月${uses}回利用時）`;
+
+    const perUseYen = timesCarPerUseYen(hours, km);
+    const breakEvenTesla = perUseYen > 0 ? teslaMonthlyYen / perUseYen : Infinity;
+    const breakEvenLexus = perUseYen > 0 ? lexusMonthlyYen / perUseYen : Infinity;
+
+    const teslaFloor = Math.floor(breakEvenTesla);
+    const lexusFloor = Math.floor(breakEvenLexus);
+
+    $('bes-breakeven-tesla').textContent =
+      `Tesla Model Y L との損益分岐点：理論値 月${breakEvenTesla.toFixed(1)}回（月${teslaFloor}回以下ならタイムズカーが得、月${teslaFloor + 1}回以上ならTesla所有が得）`;
+    $('bes-breakeven-lexus').textContent =
+      `LEXUS RX350h との損益分岐点：理論値 月${breakEvenLexus.toFixed(1)}回（月${lexusFloor}回以下ならタイムズカーが得、月${lexusFloor + 1}回以上ならLEXUS所有が得）`;
+
+    // グラフ用データ（0〜15回）
+    const labels = Array.from({ length: 16 }, (_, i) => `${i}回`);
+    const timesLine = Array.from({ length: 16 }, (_, i) => timesCarMonthlyYen(i, hours, km) / 10000);
+    const teslaLine = Array.from({ length: 16 }, () => teslaMonthlyYen / 10000);
+    const lexusLine = Array.from({ length: 16 }, () => lexusMonthlyYen / 10000);
+
+    const canvas = $<HTMLCanvasElement>('bes-chart');
+    if (chart) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = timesLine;
+      chart.data.datasets[1].data = teslaLine;
+      chart.data.datasets[2].data = lexusLine;
+      chart.update();
+    } else {
+      chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'タイムズカー', data: timesLine, borderColor: '#3B82F6', backgroundColor: 'transparent', borderWidth: 2, tension: 0.15 },
+            { label: 'Tesla Model Y L所有（実質月額）', data: teslaLine, borderColor: '#111827', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 4], pointRadius: 0 },
+            { label: 'LEXUS RX350h所有（実質月額）', data: lexusLine, borderColor: '#9CA3AF', backgroundColor: 'transparent', borderWidth: 2, borderDash: [2, 3], pointRadius: 0 },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: true, position: 'bottom' } },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: '1か月あたりの実質コスト（万円）' } },
+            x: { title: { display: true, text: '月間タイムズカー利用回数' } },
+          },
+        },
+      });
+    }
+  }
+
+  Object.values(els).forEach((el) => el.addEventListener('input', calc));
+  calc();
+</script>
