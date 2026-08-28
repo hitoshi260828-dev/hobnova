@@ -7,6 +7,7 @@ category: "gadget"
 tags: ["スマートホーム", "IoT"]
 draft: false
 featured: true
+image: "./smart-home-starter-guide-hero.png"
 ---
 
 「スマートホームを始めたい」と思っても、対応デバイスの種類は非常に多く、何から手を付ければよいか迷ってしまいがちです。ここでは、最初の一歩として揃えておくと後々の拡張がスムーズになる3つのデバイスカテゴリと、選び方の基準を整理します。

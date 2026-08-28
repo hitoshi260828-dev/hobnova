@@ -35,5 +35,12 @@ const { title, categoryLabelEn, categoryLabelJa, publishDate, updatedDate, image
     )}
   </div>
 
-  <ImagePlaceholder image={image} alt={title} aspect="aspect-video" class="mt-6 rounded-xl border border-border" />
+  <ImagePlaceholder
+    image={image}
+    alt={title}
+    aspect="aspect-video"
+    class="mt-6 rounded-xl border border-border"
+    widths={[480, 768, 1200, 1536]}
+    sizes="(min-width: 768px) 768px, 100vw"
+  />
 </header>

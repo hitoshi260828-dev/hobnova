@@ -13,9 +13,21 @@ interface Props {
   aspect?: string;
   iconType?: 'photo' | 'chart';
   class?: string;
+  // カード用の小さい表示（デフォルト）と、記事/DATA LABのアイキャッチのような
+  // 大きい表示とで必要な解像度が大きく異なるため、呼び出し側で上書きできるようにする。
+  widths?: number[];
+  sizes?: string;
 }
 
-const { image, alt, aspect = 'aspect-[4/3]', iconType = 'photo', class: className = '' } = Astro.props;
+const {
+  image,
+  alt,
+  aspect = 'aspect-[4/3]',
+  iconType = 'photo',
+  class: className = '',
+  widths = [320, 640, 960],
+  sizes = '(min-width: 1024px) 320px, 50vw',
+} = Astro.props;
 ---
 
 <div class:list={['relative overflow-hidden bg-bg-light', aspect, className]}>
@@ -25,8 +37,8 @@ const { image, alt, aspect = 'aspect-[4/3]', iconType = 'photo', class: classNam
         src={image}
         alt={alt}
         class="h-full w-full object-cover"
-        widths={[320, 640, 960]}
-        sizes="(min-width: 1024px) 320px, 50vw"
+        widths={widths}
+        sizes={sizes}
       />
     ) : (
       <div

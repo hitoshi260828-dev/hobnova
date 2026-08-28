@@ -29,6 +29,8 @@ const featured = articles
                 image={entry.data.image}
                 alt={entry.data.title}
                 aspect={isLead ? 'aspect-[16/9]' : 'aspect-[4/3]'}
+                widths={isLead ? [480, 768, 1000] : [320, 640, 960]}
+                sizes={isLead ? '(min-width: 1024px) 760px, 100vw' : '(min-width: 1024px) 320px, 50vw'}
               />
               {category && <Badge>{category.labelEn}</Badge>}
               <h3

@@ -44,7 +44,14 @@ const { title, description, publishDate, updatedDate, stats, chart, ranking, tab
   {
     image && (
       <div class="mx-auto max-w-3xl px-4 pt-8 sm:px-6">
-        <ImagePlaceholder image={image} alt={title} aspect="aspect-[16/9]" class="rounded-xl border border-border" />
+        <ImagePlaceholder
+          image={image}
+          alt={title}
+          aspect="aspect-[16/9]"
+          class="rounded-xl border border-border"
+          widths={[480, 768, 1200, 1536]}
+          sizes="(min-width: 768px) 768px, 100vw"
+        />
       </div>
     )
   }
