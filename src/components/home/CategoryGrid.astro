@@ -1,0 +1,24 @@
+---
+import SectionHeading from '../ui/SectionHeading.astro';
+import Card from '../ui/Card.astro';
+import CategoryIcon from '../ui/CategoryIcon.astro';
+import { CATEGORIES } from '../../consts';
+---
+
+<section class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+  <SectionHeading labelEn="CATEGORY" labelJa="カテゴリ" />
+
+  <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    {
+      CATEGORIES.map((c) => (
+        <Card href={c.href} class="text-center">
+          <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-bg-light text-navy transition-colors group-hover:bg-accent/10 group-hover:text-accent">
+            <CategoryIcon id={c.id} class="h-6 w-6" />
+          </div>
+          <p class="mt-4 text-sm font-semibold tracking-wide text-navy">{c.labelEn}</p>
+          <p class="mt-1 text-xs text-charcoal/60">{c.labelJa}</p>
+        </Card>
+      ))
+    }
+  </div>
+</section>

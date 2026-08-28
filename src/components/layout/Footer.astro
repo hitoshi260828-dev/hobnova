@@ -1,0 +1,39 @@
+---
+import Logo from '../ui/Logo.astro';
+import { FOOTER_NAV, SITE_TAGLINE } from '../../consts';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-border bg-white">
+  <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <div class="flex flex-col gap-10 sm:flex-row sm:justify-between">
+      <div class="max-w-sm">
+        <a href="/" class="flex items-center gap-2 text-navy" aria-label="HOBNOVA トップページ">
+          <Logo variant="mark" class="h-8 w-auto" />
+          <span class="text-base font-bold tracking-tight">HOBNOVA</span>
+        </a>
+        <p class="mt-3 text-sm text-charcoal/70">{SITE_TAGLINE}</p>
+      </div>
+
+      <nav aria-label="フッターナビゲーション">
+        <ul class="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-1">
+          {
+            FOOTER_NAV.map((item) => (
+              <li>
+                <a href={item.href} class="text-sm text-charcoal hover:text-accent">
+                  {item.labelEn}
+                  {item.labelJa && <span class="ml-1.5 text-xs text-charcoal/50">{item.labelJa}</span>}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </div>
+
+    <p class="mt-10 border-t border-border pt-6 text-xs text-charcoal/50">
+      &copy; {year} HOBNOVA
+    </p>
+  </div>
+</footer>

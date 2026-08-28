@@ -1,0 +1,33 @@
+---
+// TOPページ各セクション共通の見出し。英語ラベルを主、日本語を副で添える
+// 「装飾=英語 / 説明=日本語」ルール（指示書7章）に沿った表現。
+interface Props {
+  labelEn: string;
+  labelJa: string;
+  description?: string;
+  moreHref?: string;
+  moreLabel?: string;
+}
+
+const { labelEn, labelJa, description, moreHref, moreLabel = 'もっと見る' } = Astro.props;
+---
+
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h2 class="flex items-baseline gap-3">
+      <span class="text-2xl font-bold tracking-tight text-navy sm:text-3xl">{labelEn}</span>
+      <span class="text-sm text-charcoal/70">{labelJa}</span>
+    </h2>
+    {description && <p class="mt-2 max-w-2xl text-sm text-charcoal/80">{description}</p>}
+  </div>
+  {
+    moreHref && (
+      <a
+        href={moreHref}
+        class="shrink-0 text-sm font-medium text-accent underline-offset-4 hover:underline"
+      >
+        {moreLabel} &rarr;
+      </a>
+    )
+  }
+</div>

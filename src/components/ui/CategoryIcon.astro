@@ -1,0 +1,67 @@
+---
+// カテゴリ用モノトーンアイコン（線画・currentColor準拠）。
+// 新しいカテゴリを追加する場合はここに case を1つ足す。
+import type { CategoryId } from '../../consts';
+
+interface Props {
+  id: CategoryId;
+  class?: string;
+}
+
+const { id, class: className = 'h-6 w-6' } = Astro.props;
+---
+
+<svg
+  viewBox="0 0 24 24"
+  class={className}
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.6"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
+  {
+    id === 'camp' && (
+      <>
+        <path d="M3 20 L12 5 L21 20" />
+        <path d="M9.3 20 L12 13 L14.7 20" />
+      </>
+    )
+  }
+  {
+    id === 'gadget' && (
+      <>
+        <rect x="4" y="4.5" width="16" height="10.5" rx="1" />
+        <path d="M2.5 18.5h19l-1.3-2.5H3.8Z" />
+      </>
+    )
+  }
+  {
+    id === 'data-lab' && (
+      <>
+        <line x1="3" y1="20" x2="21" y2="20" />
+        <line x1="6" y1="20" x2="6" y2="12" />
+        <line x1="12" y1="20" x2="12" y2="6" />
+        <line x1="18" y1="20" x2="18" y2="15" />
+      </>
+    )
+  }
+  {
+    id === 'marketing' && (
+      <>
+        <path d="M3 10v4h3l6 4V6l-6 4H3Z" />
+        <path d="M15.2 9a4 4 0 0 1 0 6" />
+      </>
+    )
+  }
+  {
+    id === 'tools' && (
+      <>
+        <path d="M8.5 8 4.5 12l4 4" />
+        <path d="M15.5 8l4 4-4 4" />
+        <path d="M13.5 7l-2.8 10" />
+      </>
+    )
+  }
+</svg>

@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import SectionHeading from '../ui/SectionHeading.astro';
+import Card from '../ui/Card.astro';
+import Badge from '../ui/Badge.astro';
+import { CATEGORIES } from '../../consts';
+import { formatDate } from '../../lib/format';
+
+const articles = await getCollection('articles', ({ data }) => !data.draft);
+const latest = articles
+  .sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf())
+  .slice(0, 4);
+---
+
+<section class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+  <SectionHeading labelEn="NEW DISCOVERIES" labelJa="新しい発見" />
+
+  <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {
+      latest.map((entry) => {
+        const category = CATEGORIES.find((c) => c.id === entry.data.category);
+        return (
+          <Card href={`${category?.href}${entry.id}/`}>
+            {category && <Badge>{category.labelEn}</Badge>}
+            <h3 class="mt-3 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h3>
+            <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
+            <p class="mt-4 text-xs text-charcoal/50">{formatDate(entry.data.publishDate)}</p>
+          </Card>
+        );
+      })
+    }
+  </div>
+</section>

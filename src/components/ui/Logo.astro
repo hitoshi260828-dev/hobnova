@@ -1,0 +1,25 @@
+---
+// HOBNOVAロゴ。
+// 実データ（design-reference/ に保管したChatGPT生成ロゴ由来）を
+// src/assets/brand/ に配置し、astro:assets 経由でWebP最適化・配信する。
+// 差し替える場合は src/assets/brand/hobnova-logo-full.png（フルロゴ・ワードマーク入り）と
+// hobnova-mark.png（ヘキサゴンのみ・ヘッダー等の小サイズ用）を置き換えればよい。
+import { Image } from 'astro:assets';
+import logoFull from '../../assets/brand/hobnova-logo-full.png';
+import logoMark from '../../assets/brand/hobnova-mark.png';
+
+interface Props {
+  variant?: 'full' | 'mark';
+  class?: string;
+}
+
+const { variant = 'full', class: className = '' } = Astro.props;
+---
+
+{
+  variant === 'mark' ? (
+    <Image src={logoMark} alt="HOBNOVA" class={className} />
+  ) : (
+    <Image src={logoFull} alt="HOBNOVA — HOBBY × NOVA" class={className} />
+  )
+}

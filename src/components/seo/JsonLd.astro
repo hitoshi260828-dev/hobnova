@@ -1,0 +1,26 @@
+---
+// TOPページ等サイト全体で共通のJSON-LD（WebSite / Organization）。
+// 記事ページ実装時にはArticle/BreadcrumbListのJSON-LDを別途追加する。
+import { SITE_TITLE, SITE_DESCRIPTION, SITE_URL, ORG_NAME } from '../../consts';
+
+const siteUrl = Astro.site?.toString() ?? SITE_URL;
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  url: siteUrl,
+  inLanguage: 'ja',
+};
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: ORG_NAME,
+  url: siteUrl,
+};
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(websiteSchema)} />
+<script type="application/ld+json" is:inline set:html={JSON.stringify(organizationSchema)} />

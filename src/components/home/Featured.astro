@@ -1,0 +1,48 @@
+---
+import { getCollection } from 'astro:content';
+import SectionHeading from '../ui/SectionHeading.astro';
+import Card from '../ui/Card.astro';
+import Badge from '../ui/Badge.astro';
+import { CATEGORIES } from '../../consts';
+import { formatDate } from '../../lib/format';
+
+const articles = await getCollection('articles', ({ data }) => !data.draft && data.featured);
+const featured = articles
+  .sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf())
+  .slice(0, 3);
+---
+
+{
+  featured.length > 0 && (
+    <section class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <SectionHeading labelEn="FEATURED" labelJa="特集・注目コンテンツ" />
+
+      <div class="mt-8 grid gap-5 lg:grid-cols-3">
+        {featured.map((entry, i) => {
+          const category = CATEGORIES.find((c) => c.id === entry.data.category);
+          const isLead = i === 0;
+          return (
+            <Card
+              href={`${category?.href}${entry.id}/`}
+              class:list={[isLead && 'lg:col-span-2']}
+            >
+              <div class:list={['flex h-full flex-col', isLead && 'justify-end']}>
+                {category && <Badge>{category.labelEn}</Badge>}
+                <h3
+                  class:list={[
+                    'mt-3 font-semibold text-navy',
+                    isLead ? 'text-xl sm:text-2xl' : 'text-base',
+                  ]}
+                >
+                  {entry.data.title}
+                </h3>
+                <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
+                <p class="mt-4 text-xs text-charcoal/50">{formatDate(entry.data.publishDate)}</p>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
+  )
+}

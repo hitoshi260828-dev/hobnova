@@ -1,0 +1,46 @@
+---
+import { getCollection } from 'astro:content';
+import SectionHeading from '../ui/SectionHeading.astro';
+import Card from '../ui/Card.astro';
+import { formatDate } from '../../lib/format';
+
+const entries = await getCollection('dataLab', ({ data }) => !data.draft);
+const latest = entries
+  .sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf())
+  .slice(0, 3);
+---
+
+{
+  latest.length > 0 && (
+    <section class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <SectionHeading
+        labelEn="DATA LAB"
+        labelJa="データラボ"
+        description="公開データを収集・分析・可視化して「データを見る」体験を届けます。"
+        moreHref="/data-lab/"
+      />
+
+      <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {latest.map((entry) => (
+          <Card href={`/data-lab/${entry.id}/`}>
+            <h3 class="line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h3>
+            <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
+
+            {entry.data.stats && entry.data.stats.length > 0 && (
+              <dl class="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
+                {entry.data.stats.slice(0, 2).map((stat) => (
+                  <div>
+                    <dt class="text-[11px] text-charcoal/50">{stat.label}</dt>
+                    <dd class="mt-0.5 text-sm font-bold text-navy">{stat.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            <p class="mt-4 text-xs text-charcoal/50">更新日: {formatDate(entry.data.publishDate)}</p>
+          </Card>
+        ))}
+      </div>
+    </section>
+  )
+}

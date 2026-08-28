@@ -1,0 +1,28 @@
+---
+import Logo from '../ui/Logo.astro';
+import CategoryIcon from '../ui/CategoryIcon.astro';
+import { CATEGORIES, SITE_TAGLINE } from '../../consts';
+---
+
+<section class="relative overflow-hidden border-b border-border bg-white py-20 sm:py-28">
+  <!-- NOVA要素: 控えめなドットパターン（星を暗示する程度の装飾） -->
+  <div
+    class="pointer-events-none absolute inset-0 opacity-40"
+    style="background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px); background-size: 28px 28px;"
+    aria-hidden="true"
+  >
+  </div>
+
+  <div class="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
+    <Logo variant="full" class="mx-auto w-52 sm:w-64" />
+
+    <p class="mt-8 text-2xl font-bold text-navy sm:text-3xl">{SITE_TAGLINE}</p>
+    <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-charcoal/80 sm:text-base">
+      キャンプ、ガジェット、データ分析、デジタルマーケティング、Webツール。運営者自身が興味を持ったテーマを「試す」「調べる」「分析する」「作る」ことで、新しい発見を届ける個人ラボです。
+    </p>
+
+    <div class="mt-9 flex items-center justify-center gap-4 text-charcoal/40">
+      {CATEGORIES.map((c) => <CategoryIcon id={c.id} class="h-5 w-5" />)}
+    </div>
+  </div>
+</section>

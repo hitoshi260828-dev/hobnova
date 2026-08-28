@@ -1,0 +1,22 @@
+---
+// カテゴリカード／記事カード／DATA LAB・TOOLSプレビューカードで共通利用する
+// カードプリミティブ。href を渡すとリンク化する。
+interface Props {
+  href?: string;
+  class?: string;
+}
+
+const { href, class: className = '' } = Astro.props;
+const Tag = href ? 'a' : 'div';
+---
+
+<Tag
+  href={href}
+  class:list={[
+    'group block h-full rounded-xl border border-border bg-white p-5 transition-shadow duration-200',
+    href && 'hover:shadow-md hover:border-accent/40 focus-visible:shadow-md',
+    className,
+  ]}
+>
+  <slot />
+</Tag>
