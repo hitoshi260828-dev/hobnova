@@ -54,16 +54,18 @@ const dataLab = defineCollection({
 // TOOLS: 本文は解説用。実際の計算UIは toolId で対応するAstroコンポーネントを紐付ける想定。
 const tools = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/tools' }),
-  schema: z.object({
-    title: z.string(),
-    description: z.string(),
-    publishDate: z.coerce.date(),
-    updatedDate: z.coerce.date().optional(),
-    tags: z.array(z.string()).default([]),
-    draft: z.boolean().default(false),
-    featured: z.boolean().default(false),
-    toolId: z.string(),
-  }),
+  schema: ({ image }) =>
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      publishDate: z.coerce.date(),
+      updatedDate: z.coerce.date().optional(),
+      tags: z.array(z.string()).default([]),
+      image: image().optional(),
+      draft: z.boolean().default(false),
+      featured: z.boolean().default(false),
+      toolId: z.string(),
+    }),
 });
 
 export const collections = { articles, dataLab, tools };

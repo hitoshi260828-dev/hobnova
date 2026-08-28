@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import SectionHeading from '../ui/SectionHeading.astro';
 import Card from '../ui/Card.astro';
 import Badge from '../ui/Badge.astro';
+import ImagePlaceholder from '../ui/ImagePlaceholder.astro';
 import { CATEGORIES } from '../../consts';
 import { formatDate } from '../../lib/format';
 
@@ -21,6 +22,12 @@ const latest = articles
         const category = CATEGORIES.find((c) => c.id === entry.data.category);
         return (
           <Card href={`${category?.href}${entry.id}/`}>
+            <ImagePlaceholder
+              slot="media"
+              image={entry.data.image}
+              alt={entry.data.title}
+              aspect="aspect-[16/10]"
+            />
             {category && <Badge>{category.labelEn}</Badge>}
             <h3 class="mt-3 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h3>
             <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>

@@ -1,6 +1,8 @@
 ---
 // カテゴリカード／記事カード／DATA LAB・TOOLSプレビューカードで共通利用する
 // カードプリミティブ。href を渡すとリンク化する。
+// `media` 名前付きスロットに画像（ImagePlaceholder等）を渡すと、
+// パディング無しでカード上部に全幅表示される（アイキャッチ画像用）。
 interface Props {
   href?: string;
   class?: string;
@@ -13,10 +15,13 @@ const Tag = href ? 'a' : 'div';
 <Tag
   href={href}
   class:list={[
-    'group block h-full rounded-xl border border-border bg-white p-5 transition-shadow duration-200',
+    'group block h-full overflow-hidden rounded-xl border border-border bg-white transition-shadow duration-200',
     href && 'hover:shadow-md hover:border-accent/40 focus-visible:shadow-md',
     className,
   ]}
 >
-  <slot />
+  <slot name="media" />
+  <div class="p-5">
+    <slot />
+  </div>
 </Tag>

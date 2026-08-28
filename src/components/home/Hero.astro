@@ -1,10 +1,19 @@
 ---
 import Logo from '../ui/Logo.astro';
-import CategoryIcon from '../ui/CategoryIcon.astro';
-import { CATEGORIES, SITE_TAGLINE } from '../../consts';
+import ImagePlaceholder from '../ui/ImagePlaceholder.astro';
+import { SITE_TAGLINE } from '../../consts';
+
+// フォトコラージュ用の画像スロット。実写真・イラストが用意でき次第、
+// ここに import した画像を渡せばそのまま差し替わる（未指定の間はプレースホルダー表示）。
+const collage: { image?: undefined; alt: string }[] = [
+  { alt: 'キャンプの様子' },
+  { alt: 'ゴルフの様子' },
+  { alt: 'ガジェット・データ分析の様子' },
+  { alt: '車・ドライブの様子' },
+];
 ---
 
-<section class="relative overflow-hidden border-b border-border bg-white py-20 sm:py-28">
+<section class="relative overflow-hidden border-b border-border bg-white py-16 sm:py-20 lg:py-24">
   <!-- NOVA要素: 控えめなドットパターン（星を暗示する程度の装飾） -->
   <div
     class="pointer-events-none absolute inset-0 opacity-40"
@@ -13,16 +22,30 @@ import { CATEGORIES, SITE_TAGLINE } from '../../consts';
   >
   </div>
 
-  <div class="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-    <Logo variant="full" class="mx-auto w-52 sm:w-64" />
+  <div class="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16">
+    <div class="text-center lg:text-left">
+      <Logo variant="full" class="mx-auto w-48 sm:w-56 lg:mx-0" />
 
-    <p class="mt-8 text-2xl font-bold text-navy sm:text-3xl">{SITE_TAGLINE}</p>
-    <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-charcoal/80 sm:text-base">
-      キャンプ、ガジェット、データ分析、デジタルマーケティング、Webツール。運営者自身が興味を持ったテーマを「試す」「調べる」「分析する」「作る」ことで、新しい発見を届ける個人ラボです。
-    </p>
+      <p class="mt-8 text-2xl font-bold text-navy sm:text-3xl">{SITE_TAGLINE}</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-charcoal/80 sm:text-base lg:mx-0">
+        キャンプ、ガジェット、データ分析、デジタルマーケティング、Webツール。運営者自身が興味を持ったテーマを「試す」「調べる」「分析する」「作る」ことで、新しい発見を届ける個人ラボです。
+      </p>
+    </div>
 
-    <div class="mt-9 flex items-center justify-center gap-4 text-charcoal/40">
-      {CATEGORIES.map((c) => <CategoryIcon id={c.id} class="h-5 w-5" />)}
+    <div class="grid grid-cols-4 gap-2 sm:gap-3">
+      {
+        collage.map((item, i) => (
+          <ImagePlaceholder
+            image={item.image}
+            alt={item.alt}
+            aspect="aspect-[3/4]"
+            class:list={[
+              'rounded-lg border border-border shadow-sm',
+              i % 2 === 1 ? 'translate-y-4 sm:translate-y-6' : '-translate-y-1',
+            ]}
+          />
+        ))
+      }
     </div>
   </div>
 </section>

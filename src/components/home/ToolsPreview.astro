@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import SectionHeading from '../ui/SectionHeading.astro';
 import Card from '../ui/Card.astro';
 import CategoryIcon from '../ui/CategoryIcon.astro';
+import ImagePlaceholder from '../ui/ImagePlaceholder.astro';
 
 const entries = await getCollection('tools', ({ data }) => !data.draft);
 const latest = entries
@@ -23,10 +24,17 @@ const latest = entries
       <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {latest.map((entry) => (
           <Card href={`/tools/${entry.id}/`}>
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-bg-light text-navy">
-              <CategoryIcon id="tools" class="h-5 w-5" />
+            <ImagePlaceholder
+              slot="media"
+              image={entry.data.image}
+              alt={entry.data.title}
+              aspect="aspect-[16/10]"
+            />
+            <div class="flex items-center gap-1.5 text-charcoal/60">
+              <CategoryIcon id="tools" class="h-3.5 w-3.5" />
+              <span class="text-xs font-semibold tracking-wide">TOOL</span>
             </div>
-            <h3 class="mt-4 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h3>
+            <h3 class="mt-2 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h3>
             <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
           </Card>
         ))}
