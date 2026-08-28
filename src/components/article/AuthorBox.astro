@@ -1,0 +1,19 @@
+---
+import Logo from '../ui/Logo.astro';
+
+interface Props {
+  author?: string;
+}
+
+const { author = 'HOBNOVA編集部' } = Astro.props;
+---
+
+<div class="flex items-center gap-4 rounded-xl border border-border bg-white p-5">
+  <Logo variant="mark" class="h-10 w-auto shrink-0" />
+  <div>
+    <p class="text-sm font-semibold text-navy">{author}</p>
+    <p class="mt-1 text-xs text-charcoal/60">
+      キャンプ・ガジェット・データ分析・デジタルマーケティングなど、好奇心の赴くままに「試す」「調べる」「分析する」HOBNOVAの編集チームです。
+    </p>
+  </div>
+</div>

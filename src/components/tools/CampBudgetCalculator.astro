@@ -1,0 +1,127 @@
+---
+// キャンプギア予算計算機。チェックしたギアの合計金額をカテゴリ別・総額で集計する。
+interface Item {
+  name: string;
+  price: number;
+}
+
+interface Group {
+  category: string;
+  items: Item[];
+}
+
+const groups: Group[] = [
+  {
+    category: 'テント・タープ',
+    items: [
+      { name: 'ソロテント', price: 15000 },
+      { name: 'ファミリーテント', price: 35000 },
+      { name: 'タープ', price: 12000 },
+    ],
+  },
+  {
+    category: '寝具',
+    items: [
+      { name: '寝袋（シュラフ）', price: 8000 },
+      { name: 'マット', price: 5000 },
+      { name: 'コット', price: 9000 },
+    ],
+  },
+  {
+    category: '火まわり・調理',
+    items: [
+      { name: 'バーナー', price: 6000 },
+      { name: 'クッカーセット', price: 4000 },
+      { name: 'クーラーボックス', price: 7000 },
+    ],
+  },
+  {
+    category: '家具・収納',
+    items: [
+      { name: 'チェア', price: 5000 },
+      { name: 'テーブル', price: 4000 },
+      { name: 'コンテナボックス', price: 3000 },
+    ],
+  },
+  {
+    category: '照明・電源',
+    items: [
+      { name: 'ランタン', price: 4000 },
+      { name: 'ポータブル電源', price: 20000 },
+    ],
+  },
+];
+---
+
+<div class="rounded-xl border border-border bg-white p-5 sm:p-6">
+  <div class="grid gap-6 sm:grid-cols-2">
+    {
+      groups.map((group) => (
+        <fieldset class="cgb-group" data-group={group.category}>
+          <legend class="text-sm font-semibold text-navy">{group.category}</legend>
+          <div class="mt-2 space-y-2">
+            {group.items.map((item) => (
+              <label class="flex items-center justify-between gap-3 text-sm text-charcoal/80">
+                <span class="flex items-center gap-2">
+                  <input type="checkbox" class="cgb-item h-4 w-4 rounded border-border text-accent focus-visible:ring-accent" data-price={item.price} data-group={group.category} />
+                  {item.name}
+                </span>
+                <span class="text-charcoal/50">¥{item.price.toLocaleString('ja-JP')}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ))
+    }
+  </div>
+
+  <div class="mt-8 border-t border-border pt-6">
+    <p class="text-xs font-semibold tracking-wide text-charcoal/60">カテゴリ別内訳</p>
+    <dl id="cgb-breakdown" class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {
+        groups.map((group) => (
+          <div class="rounded-lg bg-bg-light p-3" data-breakdown={group.category}>
+            <dt class="text-[11px] text-charcoal/50">{group.category}</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-navy">¥0</dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <div class="mt-5 rounded-lg bg-accent/10 p-4">
+      <p class="text-[11px] text-charcoal/50">合計予算</p>
+      <p id="cgb-total" class="mt-1 text-xl font-bold text-navy">¥0</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const checkboxes = document.querySelectorAll<HTMLInputElement>('.cgb-item');
+  const totalEl = document.getElementById('cgb-total');
+
+  const yen = (n: number) => `¥${Math.round(n).toLocaleString('ja-JP')}`;
+
+  function recalc() {
+    const byGroup = new Map<string, number>();
+    let total = 0;
+
+    checkboxes.forEach((cb) => {
+      if (!cb.checked) return;
+      const price = Number(cb.dataset.price) || 0;
+      const group = cb.dataset.group ?? '';
+      byGroup.set(group, (byGroup.get(group) ?? 0) + price);
+      total += price;
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-breakdown]').forEach((el) => {
+      const group = el.dataset.breakdown ?? '';
+      const dd = el.querySelector('dd');
+      if (dd) dd.textContent = yen(byGroup.get(group) ?? 0);
+    });
+
+    if (totalEl) totalEl.textContent = yen(total);
+  }
+
+  checkboxes.forEach((cb) => cb.addEventListener('change', recalc));
+  recalc();
+</script>

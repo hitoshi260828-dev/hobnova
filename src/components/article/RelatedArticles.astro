@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+import Card from '../ui/Card.astro';
+import Badge from '../ui/Badge.astro';
+import ImagePlaceholder from '../ui/ImagePlaceholder.astro';
+import { CATEGORIES } from '../../consts';
+import { formatDate } from '../../lib/format';
+
+interface Props {
+  currentId: string;
+  category: string;
+  tags: string[];
+  limit?: number;
+}
+
+const { currentId, category, tags, limit = 3 } = Astro.props;
+
+const all = await getCollection('articles', ({ data }) => !data.draft);
+const others = all.filter((e) => e.id !== currentId);
+
+// 同カテゴリを優先し、次にタグの重複数でスコアリング
+const scored = others
+  .map((entry) => {
+    const sameCategory = entry.data.category === category ? 2 : 0;
+    const tagOverlap = entry.data.tags.filter((t) => tags.includes(t)).length;
+    return { entry, score: sameCategory + tagOverlap };
+  })
+  .filter((s) => s.score > 0)
+  .sort((a, b) => b.score - a.score || b.entry.data.publishDate.valueOf() - a.entry.data.publishDate.valueOf())
+  .slice(0, limit)
+  .map((s) => s.entry);
+---
+
+{
+  scored.length > 0 && (
+    <section aria-label="関連記事">
+      <p class="text-xs font-semibold tracking-wide text-charcoal/60">関連記事</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-3">
+        {scored.map((entry) => {
+          const cat = CATEGORIES.find((c) => c.id === entry.data.category);
+          return (
+            <Card href={`${cat?.href}${entry.id}/`}>
+              <ImagePlaceholder
+                slot="media"
+                image={entry.data.image}
+                alt={entry.data.title}
+                aspect="aspect-[16/10]"
+              />
+              {cat && <Badge>{cat.labelEn}</Badge>}
+              <h3 class="mt-3 line-clamp-2 text-sm font-semibold text-navy">{entry.data.title}</h3>
+              <p class="mt-3 text-xs text-charcoal/50">{formatDate(entry.data.publishDate)}</p>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
+  )
+}

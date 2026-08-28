@@ -1,0 +1,40 @@
+---
+// 記事・DATA LAB・TOOLSなど、TOP以外の全ページで使う共通パンくず。
+// JSON-LD の BreadcrumbList は各ページ側の JsonLd コンポーネントで別途出力する。
+interface Crumb {
+  label: string;
+  href?: string; // 省略時は現在地（リンクなし）
+}
+
+interface Props {
+  items: Crumb[];
+}
+
+const { items } = Astro.props;
+---
+
+<nav aria-label="パンくずリスト" class="mx-auto max-w-6xl px-4 py-4 text-xs text-charcoal/60 sm:px-6">
+  <ol class="flex flex-wrap items-center gap-1.5">
+    <li>
+      <a href="/" class="hover:text-accent">TOP</a>
+    </li>
+    {
+      items.map((item) => (
+        <>
+          <li aria-hidden="true" class="text-charcoal/30">
+            /
+          </li>
+          <li aria-current={!item.href ? 'page' : undefined}>
+            {item.href ? (
+              <a href={item.href} class="hover:text-accent">
+                {item.label}
+              </a>
+            ) : (
+              <span class="text-charcoal/80">{item.label}</span>
+            )}
+          </li>
+        </>
+      ))
+    }
+  </ol>
+</nav>

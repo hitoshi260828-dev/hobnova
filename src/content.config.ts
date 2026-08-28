@@ -1,10 +1,11 @@
 import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
+import { ARTICLE_CATEGORY_IDS } from './consts';
 
 // CAMP / GADGET / DIGITAL MARKETING はスキーマが同一のため単一コレクション + category enum で管理する。
-// カテゴリを追加する場合はここに値を足し、src/consts.ts の CATEGORIES にも追加する。
-const articleCategories = ['camp', 'gadget', 'marketing'] as const;
+// カテゴリを追加する場合は src/consts.ts の ARTICLE_CATEGORY_IDS / CATEGORIES に値を足せばよい。
+const articleCategories = ARTICLE_CATEGORY_IDS;
 
 const articles = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/articles' }),
@@ -39,7 +40,7 @@ const dataLab = defineCollection({
       featured: z.boolean().default(false),
       author: z.string().default('HOBNOVA編集部'),
       source: z.string().optional(),
-      // TOPページ／一覧カードに出す簡易統計（本格的なグラフはDATA LAB詳細実装フェーズで追加）
+      // TOPページ／一覧カードに出す簡易統計
       stats: z
         .array(
           z.object({
@@ -47,6 +48,36 @@ const dataLab = defineCollection({
             value: z.string(),
           }),
         )
+        .optional(),
+      // 詳細ページのグラフ（Chart.js）。type未指定時は 'bar'。
+      chart: z
+        .object({
+          type: z.enum(['bar', 'line', 'pie']).default('bar'),
+          labels: z.array(z.string()),
+          series: z.array(
+            z.object({
+              label: z.string(),
+              data: z.array(z.number()),
+            }),
+          ),
+        })
+        .optional(),
+      // ランキング表
+      ranking: z
+        .array(
+          z.object({
+            rank: z.number(),
+            label: z.string(),
+            value: z.string(),
+          }),
+        )
+        .optional(),
+      // 汎用データテーブル
+      table: z
+        .object({
+          headers: z.array(z.string()),
+          rows: z.array(z.array(z.string())),
+        })
         .optional(),
     }),
 });

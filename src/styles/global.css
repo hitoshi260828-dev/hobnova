@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* セルフホストフォント（Fontsource）。unicode-range で分割されているため
    実際に使用される文字のグリフのみがダウンロードされる。 */

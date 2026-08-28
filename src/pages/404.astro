@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Logo from '../components/ui/Logo.astro';
+import { CATEGORIES } from '../consts';
+---
+
+<BaseLayout title="ページが見つかりません" description="お探しのページは見つかりませんでした。">
+  <div class="mx-auto flex max-w-2xl flex-col items-center px-4 py-24 text-center sm:px-6">
+    <Logo variant="mark" class="h-14 w-auto" />
+    <p class="mt-6 text-sm font-semibold tracking-widest text-charcoal/40">404</p>
+    <h1 class="mt-2 text-xl font-bold text-navy sm:text-2xl">ページが見つかりませんでした</h1>
+    <p class="mt-3 text-sm text-charcoal/70">
+      お探しのページは移動または削除された可能性があります。URLをご確認いただくか、下記からお探しください。
+    </p>
+
+    <a
+      href="/"
+      class="mt-8 inline-flex items-center rounded-full bg-navy px-6 py-2.5 text-sm font-semibold text-white hover:bg-charcoal"
+    >
+      TOPページへ戻る
+    </a>
+
+    <nav aria-label="カテゴリ" class="mt-10 flex flex-wrap justify-center gap-3">
+      {
+        CATEGORIES.map((c) => (
+          <a
+            href={c.href}
+            class="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-charcoal hover:border-accent/40 hover:text-accent"
+          >
+            {c.labelEn}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</BaseLayout>

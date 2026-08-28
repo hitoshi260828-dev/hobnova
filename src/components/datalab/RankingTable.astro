@@ -1,0 +1,25 @@
+---
+interface Item {
+  rank: number;
+  label: string;
+  value: string;
+}
+
+interface Props {
+  items: Item[];
+}
+
+const { items } = Astro.props;
+---
+
+<ol class="divide-y divide-border rounded-xl border border-border bg-white">
+  {
+    items.map((item) => (
+      <li class="flex items-center gap-4 px-5 py-3">
+        <span class="w-6 shrink-0 text-right text-sm font-bold text-charcoal/40">{item.rank}</span>
+        <span class="flex-1 text-sm text-navy">{item.label}</span>
+        <span class="shrink-0 text-sm font-semibold text-navy">{item.value}</span>
+      </li>
+    ))
+  }
+</ol>

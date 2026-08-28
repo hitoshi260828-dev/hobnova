@@ -25,6 +25,7 @@ const { title, description, image, type } = Astro.props;
     <meta name="generator" content={Astro.generator} />
     <SEOHead title={title} description={description} image={image} type={type} />
     <JsonLd />
+    <slot name="head-extra" />
   </head>
   <body class="min-h-screen bg-bg-light text-text antialiased">
     <a

@@ -1,0 +1,33 @@
+---
+// astro:content の render() が返す headings（remark-toc相当）をそのまま使う。
+// H2/H3のみを目次対象とする。
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{
+  items.length > 0 && (
+    <nav aria-label="目次" class="rounded-xl border border-border bg-white p-5">
+      <p class="text-xs font-semibold tracking-wide text-charcoal/60">目次</p>
+      <ol class="mt-3 space-y-2 text-sm">
+        {items.map((h) => (
+          <li class:list={[h.depth === 3 && 'pl-4']}>
+            <a href={`#${h.slug}`} class="text-charcoal/80 hover:text-accent">
+              {h.text}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}

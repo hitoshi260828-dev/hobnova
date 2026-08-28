@@ -1,0 +1,77 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const pageUrl = new URL(Astro.url.pathname, Astro.site).toString();
+
+const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(pageUrl)}`;
+const lineHref = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(pageUrl)}`;
+const hatenaHref = `https://b.hatena.ne.jp/entry/panel/?url=${encodeURIComponent(pageUrl)}&title=${encodeURIComponent(title)}`;
+---
+
+<div class="flex flex-wrap items-center gap-2" aria-label="この記事をシェア">
+  <a
+    href={xHref}
+    target="_blank"
+    rel="noopener noreferrer"
+    class="flex h-9 w-9 items-center justify-center rounded-full border border-border text-charcoal hover:border-accent/40 hover:text-accent"
+    aria-label="Xでシェア"
+  >
+    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <path d="M18.9 2h3.3l-7.2 8.2L23.5 22h-6.6l-5.2-6.8L5.8 22H2.5l7.7-8.8L1.5 2h6.8l4.7 6.2L18.9 2Zm-1.2 18h1.8L7.4 3.9H5.5L17.7 20Z" />
+    </svg>
+  </a>
+  <a
+    href={lineHref}
+    target="_blank"
+    rel="noopener noreferrer"
+    class="flex h-9 w-9 items-center justify-center rounded-full border border-border text-charcoal hover:border-accent/40 hover:text-accent"
+    aria-label="LINEでシェア"
+  >
+    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <path d="M12 3C6.9 3 2.8 6.4 2.8 10.6c0 3.7 3.2 6.8 7.6 7.5.3.1.7.2.8.5.1.3 0 .7 0 1l-.1.8c0 .2-.2.9.8.5s5.4-3.2 7.4-5.5c1.4-1.5 2-3.1 2-4.8C21.2 6.4 17.1 3 12 3Z" />
+    </svg>
+  </a>
+  <a
+    href={hatenaHref}
+    target="_blank"
+    rel="noopener noreferrer"
+    class="flex h-9 w-9 items-center justify-center rounded-full border border-border text-xs font-bold text-charcoal hover:border-accent/40 hover:text-accent"
+    aria-label="はてなブックマークに追加"
+  >
+    B!
+  </a>
+  <button
+    type="button"
+    data-copy-url={pageUrl}
+    class="share-copy-btn flex h-9 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-charcoal hover:border-accent/40 hover:text-accent"
+  >
+    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+    <span class="share-copy-label">リンクをコピー</span>
+  </button>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.share-copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const url = btn.dataset.copyUrl;
+      const label = btn.querySelector('.share-copy-label');
+      if (!url || !label) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        const original = label.textContent;
+        label.textContent = 'コピーしました';
+        setTimeout(() => {
+          label.textContent = original;
+        }, 2000);
+      } catch {
+        // クリップボードAPIが使えない環境では何もしない
+      }
+    });
+  });
+</script>

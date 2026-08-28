@@ -1,0 +1,61 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumb from '../../components/layout/Breadcrumb.astro';
+import Card from '../../components/ui/Card.astro';
+import Badge from '../../components/ui/Badge.astro';
+import ImagePlaceholder from '../../components/ui/ImagePlaceholder.astro';
+import { ARTICLE_CATEGORY_IDS, CATEGORIES } from '../../consts';
+import { formatDate } from '../../lib/format';
+
+export async function getStaticPaths() {
+  return ARTICLE_CATEGORY_IDS.map((category) => ({ params: { category } }));
+}
+
+const { category } = Astro.params;
+const categoryMeta = CATEGORIES.find((c) => c.id === category)!;
+
+const articles = (await getCollection('articles', ({ data }) => !data.draft && data.category === category)).sort(
+  (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf(),
+);
+---
+
+<BaseLayout
+  title={`${categoryMeta.labelEn} ${categoryMeta.labelJa}`}
+  description={categoryMeta.description}
+>
+  <Breadcrumb items={[{ label: categoryMeta.labelEn }]} />
+
+  <div class="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+    <header>
+      <h1 class="flex items-baseline gap-3">
+        <span class="text-2xl font-bold tracking-tight text-navy sm:text-3xl">{categoryMeta.labelEn}</span>
+        <span class="text-sm text-charcoal/70">{categoryMeta.labelJa}</span>
+      </h1>
+      <p class="mt-2 max-w-2xl text-sm text-charcoal/80">{categoryMeta.description}</p>
+    </header>
+
+    {
+      articles.length > 0 ? (
+        <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {articles.map((entry) => (
+            <Card href={`${categoryMeta.href}${entry.id}/`}>
+              <ImagePlaceholder
+                slot="media"
+                image={entry.data.image}
+                alt={entry.data.title}
+                aspect="aspect-[16/10]"
+              />
+              <Badge>{categoryMeta.labelEn}</Badge>
+              <h2 class="mt-3 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h2>
+              <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
+              <p class="mt-4 text-xs text-charcoal/50">{formatDate(entry.data.publishDate)}</p>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <p class="mt-8 text-sm text-charcoal/60">まだ記事がありません。近日公開予定です。</p>
+      )
+    }
+  </div>
+</BaseLayout>

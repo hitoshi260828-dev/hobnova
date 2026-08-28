@@ -1,0 +1,29 @@
+---
+// パンくず用の BreadcrumbList JSON-LD。Breadcrumb.astro と同じitems形状を受け取る
+// （TOPは自動的に先頭要素として追加される）。
+interface Crumb {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  items: Crumb[];
+}
+
+const { items } = Astro.props;
+
+const allItems: Crumb[] = [{ label: 'TOP', href: '/' }, ...items];
+
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: allItems.map((item, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: item.label,
+    ...(item.href ? { item: new URL(item.href, Astro.site).toString() } : {}),
+  })),
+};
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbSchema)} />

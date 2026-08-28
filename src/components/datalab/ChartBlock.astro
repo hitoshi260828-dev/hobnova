@@ -1,0 +1,75 @@
+---
+// Chart.js はこのコンポーネントを使うページだけにバンドルされる
+// （Astro/Viteのページ単位バンドリングにより、他ページへは送信されない）。
+interface Series {
+  label: string;
+  data: number[];
+}
+
+interface Props {
+  id: string;
+  type: 'bar' | 'line' | 'pie';
+  labels: string[];
+  series: Series[];
+}
+
+const { id, type, labels, series } = Astro.props;
+---
+
+<div class="rounded-xl border border-border bg-white p-5">
+  <canvas
+    id={id}
+    height="260"
+    data-chart-type={type}
+    data-chart-labels={JSON.stringify(labels)}
+    data-chart-series={JSON.stringify(series)}
+  ></canvas>
+</div>
+
+<script>
+  import Chart from 'chart.js/auto';
+
+  const PALETTE = ['#3B82F6', '#111827', '#60A5FA', '#374151', '#93C5FD', '#9CA3AF'];
+
+  document.querySelectorAll<HTMLCanvasElement>('canvas[data-chart-type]').forEach((canvas) => {
+    if (canvas.dataset.chartInitialized) return;
+    canvas.dataset.chartInitialized = 'true';
+
+    const type = canvas.dataset.chartType as 'bar' | 'line' | 'pie';
+    const labels = JSON.parse(canvas.dataset.chartLabels ?? '[]') as string[];
+    const series = JSON.parse(canvas.dataset.chartSeries ?? '[]') as { label: string; data: number[] }[];
+
+    const datasets =
+      type === 'pie'
+        ? series.map((s) => ({
+            label: s.label,
+            data: s.data,
+            backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
+          }))
+        : series.map((s, i) => ({
+            label: s.label,
+            data: s.data,
+            backgroundColor: type === 'bar' ? PALETTE[i % PALETTE.length] : 'transparent',
+            borderColor: PALETTE[i % PALETTE.length],
+            borderWidth: 2,
+            tension: 0.3,
+          }));
+
+    new Chart(canvas, {
+      type,
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: series.length > 1 || type === 'pie' },
+        },
+        scales:
+          type === 'pie'
+            ? undefined
+            : {
+                y: { beginAtZero: true },
+              },
+      },
+    });
+  });
+</script>

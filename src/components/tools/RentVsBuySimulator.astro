@@ -1,0 +1,164 @@
+---
+// 住宅購入 vs 賃貸シミュレーター。
+// 元利均等返済のローン計算 + 家賃の年次上昇を考慮した累計コストを比較する。
+---
+
+<div class="rounded-xl border border-border bg-white p-5 sm:p-6">
+  <form id="rvb-form" class="grid gap-5 sm:grid-cols-2">
+    <fieldset class="contents">
+      <legend class="sr-only">購入条件</legend>
+      <label class="block text-sm">
+        <span class="text-charcoal/70">物件価格（万円）</span>
+        <input id="rvb-price" type="number" min="0" step="100" value="4000" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+      <label class="block text-sm">
+        <span class="text-charcoal/70">頭金（万円）</span>
+        <input id="rvb-down" type="number" min="0" step="50" value="800" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+      <label class="block text-sm">
+        <span class="text-charcoal/70">ローン金利（年率 %）</span>
+        <input id="rvb-rate" type="number" min="0" step="0.1" value="1.0" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+      <label class="block text-sm">
+        <span class="text-charcoal/70">ローン返済期間（年）</span>
+        <input id="rvb-loan-years" type="number" min="1" step="1" value="35" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+      <label class="block text-sm">
+        <span class="text-charcoal/70">月々の維持費（管理費・税金など／万円）</span>
+        <input id="rvb-maintenance" type="number" min="0" step="0.5" value="2" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+    </fieldset>
+
+    <fieldset class="contents">
+      <legend class="sr-only">賃貸条件</legend>
+      <label class="block text-sm">
+        <span class="text-charcoal/70">現在の家賃（万円／月）</span>
+        <input id="rvb-rent" type="number" min="0" step="0.5" value="12" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+      <label class="block text-sm">
+        <span class="text-charcoal/70">家賃上昇率（年率 %）</span>
+        <input id="rvb-rent-growth" type="number" min="0" step="0.1" value="0.5" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+      <label class="block text-sm sm:col-span-2">
+        <span class="text-charcoal/70">想定居住年数（年）</span>
+        <input id="rvb-live-years" type="number" min="1" step="1" value="30" class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </label>
+    </fieldset>
+  </form>
+
+  <div class="mt-6 grid gap-3 sm:grid-cols-3">
+    <div class="rounded-lg bg-bg-light p-4">
+      <p class="text-[11px] text-charcoal/50">購入の総支払額</p>
+      <p id="rvb-buy-total" class="mt-1 text-lg font-bold text-navy">-</p>
+    </div>
+    <div class="rounded-lg bg-bg-light p-4">
+      <p class="text-[11px] text-charcoal/50">賃貸の総支払額</p>
+      <p id="rvb-rent-total" class="mt-1 text-lg font-bold text-navy">-</p>
+    </div>
+    <div class="rounded-lg bg-accent/10 p-4">
+      <p class="text-[11px] text-charcoal/50">差額</p>
+      <p id="rvb-diff" class="mt-1 text-lg font-bold text-navy">-</p>
+    </div>
+  </div>
+  <p id="rvb-monthly" class="mt-2 text-xs text-charcoal/60"></p>
+
+  <div class="mt-6">
+    <canvas id="rvb-chart" height="260"></canvas>
+  </div>
+</div>
+
+<script>
+  import Chart from 'chart.js/auto';
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  const inputs = {
+    price: $<HTMLInputElement>('rvb-price'),
+    down: $<HTMLInputElement>('rvb-down'),
+    rate: $<HTMLInputElement>('rvb-rate'),
+    loanYears: $<HTMLInputElement>('rvb-loan-years'),
+    maintenance: $<HTMLInputElement>('rvb-maintenance'),
+    rent: $<HTMLInputElement>('rvb-rent'),
+    rentGrowth: $<HTMLInputElement>('rvb-rent-growth'),
+    liveYears: $<HTMLInputElement>('rvb-live-years'),
+  };
+
+  const buyTotalEl = $('rvb-buy-total');
+  const rentTotalEl = $('rvb-rent-total');
+  const diffEl = $('rvb-diff');
+  const monthlyEl = $('rvb-monthly');
+  const canvas = $<HTMLCanvasElement>('rvb-chart');
+
+  const yen = (man: number) => `${Math.round(man).toLocaleString('ja-JP')}万円`;
+
+  let chart: Chart | undefined;
+
+  function calc() {
+    const price = Number(inputs.price.value) || 0;
+    const down = Number(inputs.down.value) || 0;
+    const rate = (Number(inputs.rate.value) || 0) / 100;
+    const loanYears = Math.max(1, Number(inputs.loanYears.value) || 1);
+    const maintenance = Number(inputs.maintenance.value) || 0;
+    const rent = Number(inputs.rent.value) || 0;
+    const rentGrowth = (Number(inputs.rentGrowth.value) || 0) / 100;
+    const liveYears = Math.max(1, Number(inputs.liveYears.value) || 1);
+
+    const principal = Math.max(price - down, 0);
+    const monthlyRate = rate / 12;
+    const n = loanYears * 12;
+    const monthlyPayment =
+      monthlyRate === 0 ? principal / n : (principal * monthlyRate * (1 + monthlyRate) ** n) / ((1 + monthlyRate) ** n - 1);
+
+    const buyCum: number[] = [];
+    const rentCum: number[] = [];
+    const labels: string[] = [];
+
+    let buyTotal = down;
+    let rentTotal = 0;
+    let currentRentMonthly = rent;
+
+    for (let y = 1; y <= liveYears; y++) {
+      const loanMonthsThisYear = Math.max(0, Math.min(12, n - (y - 1) * 12));
+      buyTotal += monthlyPayment * loanMonthsThisYear + maintenance * 12;
+      rentTotal += currentRentMonthly * 12;
+
+      buyCum.push(Math.round(buyTotal));
+      rentCum.push(Math.round(rentTotal));
+      labels.push(`${y}年目`);
+
+      currentRentMonthly *= 1 + rentGrowth;
+    }
+
+    buyTotalEl.textContent = yen(buyTotal);
+    rentTotalEl.textContent = yen(rentTotal);
+    const diff = buyTotal - rentTotal;
+    diffEl.textContent = `${diff >= 0 ? '賃貸が' : '購入が'} ${yen(Math.abs(diff))} 有利`;
+    monthlyEl.textContent = `月々のローン返済額（目安）: 約${yen(monthlyPayment)}`;
+
+    if (chart) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = buyCum;
+      chart.data.datasets[1].data = rentCum;
+      chart.update();
+    } else {
+      chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '購入（累計）', data: buyCum, borderColor: '#3B82F6', backgroundColor: 'transparent', borderWidth: 2, tension: 0.2 },
+            { label: '賃貸（累計）', data: rentCum, borderColor: '#111827', backgroundColor: 'transparent', borderWidth: 2, tension: 0.2 },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: true } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: '累計支払額（万円）' } } },
+        },
+      });
+    }
+  }
+
+  Object.values(inputs).forEach((el) => el.addEventListener('input', calc));
+  calc();
+</script>

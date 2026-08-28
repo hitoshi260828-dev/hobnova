@@ -14,6 +14,11 @@ export const DEFAULT_OG_IMAGE = '/og-default.png';
 
 export type CategoryId = 'camp' | 'gadget' | 'data-lab' | 'marketing' | 'tools';
 
+// 通常記事（Content Collections の articles）が対応するカテゴリ。
+// content.config.ts の category enum もここから生成し、定義の重複を避ける。
+export const ARTICLE_CATEGORY_IDS = ['camp', 'gadget', 'marketing'] as const;
+export type ArticleCategoryId = (typeof ARTICLE_CATEGORY_IDS)[number];
+
 export interface CategoryMeta {
   id: CategoryId;
   labelEn: string;

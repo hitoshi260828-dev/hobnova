@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumb from '../components/layout/Breadcrumb.astro';
+import { SITE_TITLE } from '../consts';
+---
+
+<BaseLayout title="プライバシーポリシー" description={`${SITE_TITLE}のプライバシーポリシーです。`}>
+  <Breadcrumb items={[{ label: 'PRIVACY' }]} />
+
+  <div class="prose prose-neutral mx-auto max-w-3xl px-4 pb-16 sm:px-6 prose-headings:font-bold prose-headings:text-navy prose-a:text-accent">
+    <h1>プライバシーポリシー</h1>
+    <p>
+      {SITE_TITLE}（以下「当サイト」）における個人情報の取り扱いについて、以下のとおりプライバシーポリシー（以下「本ポリシー」）を定めます。
+    </p>
+
+    <h2>1. 取得する情報について</h2>
+    <p>
+      当サイトは、お問い合わせフォーム等を通じてユーザーが自主的に提供する情報のほか、アクセス解析ツールの利用時にはCookie等を通じて閲覧履歴等の情報を取得する場合があります。
+    </p>
+
+    <h2>2. Cookie・アクセス解析ツールについて</h2>
+    <p>
+      当サイトは、サービス向上のためGoogle Analytics等のアクセス解析ツールを利用する場合があります。これらのツールはトラフィックデータの収集のためにCookieを使用することがありますが、このデータは匿名で収集されており、個人を特定するものではありません。この機能はCookieを無効にすることで収集を拒否することが可能です。
+    </p>
+
+    <h2>3. 広告について</h2>
+    <p>
+      当サイトでは、第三者配信の広告サービス（Google AdSense等）を利用する場合があります。広告配信事業者は、ユーザーの興味に応じた広告を表示するためにCookieを使用することがあります。Cookieを無効にする方法や、Google AdSenseに関する詳細は
+      <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">Google広告ポリシー</a>
+      をご確認ください。
+    </p>
+
+    <h2>4. 免責事項</h2>
+    <p>
+      当サイトに掲載する情報については、正確性・最新性・完全性を保証するものではありません。当サイトの利用によって生じた損害について、運営者は一切の責任を負いません。DATA LABで扱うデータについては、各コンテンツページに出典を明記しています。
+    </p>
+
+    <h2>5. お問い合わせ</h2>
+    <p>本ポリシーに関するお問い合わせは、準備中のお問い合わせフォームよりご連絡ください。</p>
+
+    <h2>6. プライバシーポリシーの変更</h2>
+    <p>本ポリシーの内容は、法令等の変更やサービス内容の変更に応じて、予告なく変更されることがあります。</p>
+
+    <p class="text-sm text-charcoal/50">制定日: 2026年8月</p>
+  </div>
+</BaseLayout>

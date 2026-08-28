@@ -1,0 +1,60 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumb from '../components/layout/Breadcrumb.astro';
+import Logo from '../components/ui/Logo.astro';
+import CategoryIcon from '../components/ui/CategoryIcon.astro';
+import { CATEGORIES, SITE_TAGLINE } from '../consts';
+---
+
+<BaseLayout
+  title="ABOUT"
+  description="HOBNOVA（ホブノヴァ）のブランドコンセプトと運営方針について。"
+>
+  <Breadcrumb items={[{ label: 'ABOUT' }]} />
+
+  <div class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+    <header class="text-center">
+      <Logo variant="mark" class="mx-auto h-14 w-auto" />
+      <h1 class="mt-4 text-2xl font-bold text-navy sm:text-3xl">ABOUT HOBNOVA</h1>
+      <p class="mt-2 text-sm text-charcoal/70">サイトについて</p>
+    </header>
+
+    <section class="mt-10">
+      <h2 class="text-lg font-bold text-navy">{SITE_TAGLINE}</h2>
+      <p class="mt-3 text-sm leading-relaxed text-charcoal/80">
+        HOBNOVAは「HOBBY（趣味・好奇心）」と「NOVA（新しい発見・広がり）」を掛け合わせた造語です。キャンプ、ゴルフ、ガジェット、車、データ分析、デジタルマーケティングなど、運営者自身が興味を持ったテーマについて、「試す」「調べる」「分析する」「考える」「作る」ことを通じ、新しい発見や役立つ情報を発信する個人メディアです。
+      </p>
+      <p class="mt-3 text-sm leading-relaxed text-charcoal/80">
+        単なる雑記ブログではなく、大人の好奇心を研究する個人ラボのような場所を目指しています。
+      </p>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-lg font-bold text-navy">CATEGORY <span class="text-sm font-normal text-charcoal/60">カテゴリ</span></h2>
+      <ul class="mt-4 space-y-4">
+        {
+          CATEGORIES.map((c) => (
+            <li class="flex items-start gap-4 rounded-xl border border-border bg-white p-4">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg-light text-navy">
+                <CategoryIcon id={c.id} class="h-5 w-5" />
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-navy">
+                  {c.labelEn} <span class="ml-1 text-xs font-normal text-charcoal/50">{c.labelJa}</span>
+                </p>
+                <p class="mt-1 text-sm text-charcoal/70">{c.description}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-lg font-bold text-navy">運営について</h2>
+      <p class="mt-3 text-sm leading-relaxed text-charcoal/80">
+        HOBNOVAは個人が運営するメディアです。掲載内容は運営者が実際に試したこと・調べたことをもとに作成していますが、内容の正確性・完全性を保証するものではありません。DATA LABで扱うデータは各コンテンツページに出典を明記しています。
+      </p>
+    </section>
+  </div>
+</BaseLayout>

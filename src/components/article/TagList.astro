@@ -1,0 +1,22 @@
+---
+// タグ一覧ページは将来対応のため、現時点ではリンクなしのバッジ表示に留める。
+import Badge from '../ui/Badge.astro';
+
+interface Props {
+  tags: string[];
+}
+
+const { tags } = Astro.props;
+---
+
+{
+  tags.length > 0 && (
+    <ul class="flex flex-wrap gap-2" aria-label="タグ">
+      {tags.map((tag) => (
+        <li>
+          <Badge>#{tag}</Badge>
+        </li>
+      ))}
+    </ul>
+  )
+}

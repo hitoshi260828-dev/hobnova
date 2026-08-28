@@ -17,6 +17,7 @@
     "@fontsource-variable/noto-sans-jp": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.9",
+    "chart.js": "^4.5.1",
     "tailwindcss": "^4.3.3"
   },
   "allowScripts": {
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@tailwindcss/typography": "^0.5.20",
     "typescript": "^6.0.3"
   }
 }

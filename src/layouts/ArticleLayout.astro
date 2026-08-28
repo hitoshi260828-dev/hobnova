@@ -1,0 +1,80 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BaseLayout from './BaseLayout.astro';
+import Breadcrumb from '../components/layout/Breadcrumb.astro';
+import ArticleHeader from '../components/article/ArticleHeader.astro';
+import TableOfContents from '../components/article/TableOfContents.astro';
+import TagList from '../components/article/TagList.astro';
+import AuthorBox from '../components/article/AuthorBox.astro';
+import ShareButtons from '../components/article/ShareButtons.astro';
+import RelatedArticles from '../components/article/RelatedArticles.astro';
+import PrevNextNav from '../components/article/PrevNextNav.astro';
+import ArticleJsonLd from '../components/seo/ArticleJsonLd.astro';
+import BreadcrumbJsonLd from '../components/seo/BreadcrumbJsonLd.astro';
+import { CATEGORIES } from '../consts';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  entry: CollectionEntry<'articles'>;
+  headings: Heading[];
+}
+
+const { entry, headings } = Astro.props;
+const { title, description, publishDate, updatedDate, tags, image, author, category } = entry.data;
+const categoryMeta = CATEGORIES.find((c) => c.id === category);
+---
+
+<BaseLayout title={title} description={description} type="article">
+  <Fragment slot="head-extra">
+    <ArticleJsonLd title={title} description={description} publishDate={publishDate} updatedDate={updatedDate} author={author} />
+    <BreadcrumbJsonLd
+      items={[
+        { label: categoryMeta?.labelEn ?? category, href: categoryMeta?.href },
+        { label: title },
+      ]}
+    />
+  </Fragment>
+
+  <Breadcrumb
+    items={[
+      { label: categoryMeta?.labelEn ?? category, href: categoryMeta?.href },
+      { label: title },
+    ]}
+  />
+
+  <div class="mx-auto max-w-6xl gap-10 px-4 pb-16 sm:px-6 lg:grid lg:grid-cols-[1fr_18rem] lg:items-start">
+    <article class="min-w-0">
+      <ArticleHeader
+        title={title}
+        categoryLabelEn={categoryMeta?.labelEn}
+        categoryLabelJa={categoryMeta?.labelJa}
+        publishDate={publishDate}
+        updatedDate={updatedDate}
+        image={image}
+      />
+
+      <div class="prose prose-neutral mx-auto mt-8 max-w-3xl prose-headings:font-bold prose-headings:text-navy prose-a:text-accent prose-img:rounded-xl">
+        <slot />
+      </div>
+
+      <div class="mx-auto mt-8 max-w-3xl space-y-8">
+        <TagList tags={tags} />
+        <ShareButtons title={title} />
+        <AuthorBox author={author} />
+        <PrevNextNav currentId={entry.id} category={category} />
+        <RelatedArticles currentId={entry.id} category={category} tags={tags} />
+      </div>
+    </article>
+
+    <aside class="mt-8 hidden lg:mt-0 lg:block">
+      <div class="sticky top-24 space-y-4">
+        <TableOfContents headings={headings} />
+      </div>
+    </aside>
+  </div>
+</BaseLayout>

@@ -1,0 +1,32 @@
+---
+import { ORG_NAME, DEFAULT_OG_IMAGE } from '../../consts';
+
+interface Props {
+  title: string;
+  description: string;
+  publishDate: Date;
+  updatedDate?: Date;
+  image?: string;
+  author?: string;
+}
+
+const { title, description, publishDate, updatedDate, image, author = 'HOBNOVA編集部' } = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
+const imageURL = new URL(image ?? DEFAULT_OG_IMAGE, Astro.site).toString();
+
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: title,
+  description,
+  image: imageURL,
+  datePublished: publishDate.toISOString(),
+  dateModified: (updatedDate ?? publishDate).toISOString(),
+  mainEntityOfPage: canonicalURL,
+  author: { '@type': 'Organization', name: author },
+  publisher: { '@type': 'Organization', name: ORG_NAME },
+};
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(articleSchema)} />

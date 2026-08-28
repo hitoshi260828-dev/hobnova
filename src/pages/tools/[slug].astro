@@ -1,0 +1,25 @@
+---
+import { getCollection, render } from 'astro:content';
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import RentVsBuySimulator from '../../components/tools/RentVsBuySimulator.astro';
+import CampBudgetCalculator from '../../components/tools/CampBudgetCalculator.astro';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('tools', ({ data }) => !data.draft);
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<ToolLayout entry={entry}>
+  <Fragment slot="tool">
+    {entry.data.toolId === 'rent-vs-buy' && <RentVsBuySimulator />}
+    {entry.data.toolId === 'camp-budget' && <CampBudgetCalculator />}
+  </Fragment>
+  <Content />
+</ToolLayout>

@@ -1,0 +1,46 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumb from '../../components/layout/Breadcrumb.astro';
+import Card from '../../components/ui/Card.astro';
+import ImagePlaceholder from '../../components/ui/ImagePlaceholder.astro';
+import CategoryIcon from '../../components/ui/CategoryIcon.astro';
+
+const entries = (await getCollection('tools', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf(),
+);
+---
+
+<BaseLayout title="TOOLS ツール" description="HOBNOVA独自のシミュレーター・計算ツール一覧です。">
+  <Breadcrumb items={[{ label: 'TOOLS' }]} />
+
+  <div class="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+    <header>
+      <h1 class="flex items-baseline gap-3">
+        <span class="text-2xl font-bold tracking-tight text-navy sm:text-3xl">TOOLS</span>
+        <span class="text-sm text-charcoal/70">ツール</span>
+      </h1>
+      <p class="mt-2 max-w-2xl text-sm text-charcoal/80">HOBNOVA独自のシミュレーター・計算ツールです。</p>
+    </header>
+
+    {
+      entries.length > 0 ? (
+        <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {entries.map((entry) => (
+            <Card href={`/tools/${entry.id}/`}>
+              <ImagePlaceholder slot="media" image={entry.data.image} alt={entry.data.title} aspect="aspect-[16/10]" />
+              <div class="flex items-center gap-1.5 text-charcoal/60">
+                <CategoryIcon id="tools" class="h-3.5 w-3.5" />
+                <span class="text-xs font-semibold tracking-wide">TOOL</span>
+              </div>
+              <h2 class="mt-2 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h2>
+              <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <p class="mt-8 text-sm text-charcoal/60">まだツールがありません。近日公開予定です。</p>
+      )
+    }
+  </div>
+</BaseLayout>

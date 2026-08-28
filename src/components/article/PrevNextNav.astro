@@ -1,0 +1,44 @@
+---
+import { getCollection } from 'astro:content';
+import { CATEGORIES } from '../../consts';
+
+interface Props {
+  currentId: string;
+  category: string;
+}
+
+const { currentId, category } = Astro.props;
+
+const catMeta = CATEGORIES.find((c) => c.id === category);
+
+const sameCategory = (await getCollection('articles', ({ data }) => !data.draft && data.category === category)).sort(
+  (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf(),
+);
+
+const index = sameCategory.findIndex((e) => e.id === currentId);
+const newer = index > 0 ? sameCategory[index - 1] : undefined;
+const older = index >= 0 && index < sameCategory.length - 1 ? sameCategory[index + 1] : undefined;
+---
+
+{
+  (newer || older) && (
+    <nav aria-label="前後の記事" class="grid gap-3 border-t border-border pt-6 sm:grid-cols-2">
+      <div>
+        {older && (
+          <a href={`${catMeta?.href}${older.id}/`} class="block rounded-xl border border-border bg-white p-4 hover:border-accent/40">
+            <p class="text-[11px] text-charcoal/50">← 前の記事</p>
+            <p class="mt-1 line-clamp-2 text-sm font-semibold text-navy">{older.data.title}</p>
+          </a>
+        )}
+      </div>
+      <div>
+        {newer && (
+          <a href={`${catMeta?.href}${newer.id}/`} class="block rounded-xl border border-border bg-white p-4 text-right hover:border-accent/40">
+            <p class="text-[11px] text-charcoal/50">次の記事 →</p>
+            <p class="mt-1 line-clamp-2 text-sm font-semibold text-navy">{newer.data.title}</p>
+          </a>
+        )}
+      </div>
+    </nav>
+  )
+}
