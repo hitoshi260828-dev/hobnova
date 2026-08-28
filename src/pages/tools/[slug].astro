@@ -3,6 +3,7 @@ import { getCollection, render } from 'astro:content';
 import ToolLayout from '../../layouts/ToolLayout.astro';
 import RentVsBuySimulator from '../../components/tools/RentVsBuySimulator.astro';
 import CampBudgetCalculator from '../../components/tools/CampBudgetCalculator.astro';
+import BreakEvenSimulator from '../../components/car/BreakEvenSimulator.astro';
 
 export async function getStaticPaths() {
   const entries = await getCollection('tools', ({ data }) => !data.draft);
@@ -20,6 +21,7 @@ const { Content } = await render(entry);
   <Fragment slot="tool">
     {entry.data.toolId === 'rent-vs-buy' && <RentVsBuySimulator />}
     {entry.data.toolId === 'camp-budget' && <CampBudgetCalculator />}
+    {entry.data.toolId === 'times-car-break-even' && <BreakEvenSimulator />}
   </Fragment>
   <Content />
 </ToolLayout>
