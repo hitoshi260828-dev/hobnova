@@ -64,8 +64,9 @@ Claude Codeに「〇〇についてCAMPカテゴリの記事を書いて」の�
 
 ## 6. DATA LABコンテンツを追加する
 
-`src/content/data-lab/` に Markdown ファイルを追加します。`stats` でTOPページや一覧カードに
-表示する主要指標を指定できます。
+`src/content/data-lab/` に Markdown ファイルを追加します。`stats`（主要指標）に加えて、
+`chart`（Chart.jsで描画するグラフ）・`ranking`（ランキング表）・`table`（データテーブル）を
+任意で指定できます。
 
 ```markdown
 ---
@@ -78,17 +79,33 @@ source: "出典（例: 総務省統計局）"
 stats:
   - label: "指標名"
     value: "数値"
+chart:
+  type: "line" # bar | line | pie
+  labels: ["2024", "2025", "2026"]
+  series:
+    - label: "系列名"
+      data: [10, 12, 15]
+ranking:
+  - rank: 1
+    label: "項目名"
+    value: "数値"
+table:
+  headers: ["列1", "列2"]
+  rows:
+    - ["値1", "値2"]
 ---
 
 分析・考察本文。
 ```
 
-グラフ描画などの高度なUIはDATA LAB詳細ページ実装フェーズで追加予定です。
-
 ## 7. TOOLSを追加する
 
-`src/content/tools/` に Markdown ファイルでツールの説明を追加し、`toolId` で実際の計算UI
-コンポーネントと紐付けます（詳細ページ実装フェーズで対応）。
+新しいツールを追加する場合、Claude Codeへの指示（例:「〇〇計算ツールを追加して」）で
+以下の3ステップを行います。
+
+1. `src/components/tools/` に計算ロジック付きのコンポーネントを作成
+2. `src/content/tools/` に Markdown で説明文を追加（`toolId` で1のコンポーネントに紐付け）
+3. `src/pages/tools/[slug].astro` の分岐に `toolId` の条件を1行追加
 
 ```markdown
 ---
@@ -99,18 +116,21 @@ tags: ["シミュレーター"]
 draft: false
 toolId: "unique-tool-id"
 ---
+
+ツールの解説本文（計算の前提条件・注意点など）。
 ```
+
+既存の `rent-vs-buy`（住宅購入 vs 賃貸シミュレーター）・`camp-budget`（キャンプギア予算計算機）
+が実装の参考になります。
 
 ## 8. GitHubへpushする
 
-このフォルダ（`HOBNOVA/`）自体をGitリポジトリのルートとして管理します。
+このフォルダ（`HOBNOVA/`）自体をGitリポジトリのルートとして管理します（ローカルでは
+`git init`済み・コミット済みです）。GitHubに新規リポジトリを作成し、リモートを追加してpushしてください。
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
 git remote add origin https://github.com/<your-account>/hobnova.git
+git branch -M main
 git push -u origin main
 ```
 
