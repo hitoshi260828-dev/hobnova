@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import DataLabLayout from '../../layouts/DataLabLayout.astro';
 import StationOdExplorer from '../../components/datalab/StationOdExplorer.astro';
+import StationPassengerExplorer from '../../components/datalab/StationPassengerExplorer.astro';
 
 export async function getStaticPaths() {
   const entries = await getCollection('dataLab', ({ data }) => !data.draft);
@@ -19,6 +20,9 @@ const { Content } = await render(entry);
   <Fragment slot="explorer">
     {entry.data.explorerId === 'station-od-ranking' && (
       <StationOdExplorer dataUrl="/data/shutoken-teiki-od-2015.json" defaultOrigin="新宿" />
+    )}
+    {entry.data.explorerId === 'station-passenger-trend' && (
+      <StationPassengerExplorer dataUrl="/data/s12-station-passengers-2011-2022.json" />
     )}
   </Fragment>
   <Content />

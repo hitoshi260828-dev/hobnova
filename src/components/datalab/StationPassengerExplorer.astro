@@ -1,0 +1,212 @@
+---
+// 駅乗降客数の推移（全国8,915駅、2011〜2022年度）のインタラクティブ探索UI。
+// データは国土数値情報 S12（駅別乗降客数データ）由来。集計単位は「駅コード」＝
+// 事業者・路線ごとのため、同名駅でも事業者・路線ごとに別レコードとして扱う。
+interface Props {
+  dataUrl: string;
+  defaultLabel?: string;
+}
+
+const { dataUrl, defaultLabel = '新宿（東日本旅客鉄道 中央線）' } = Astro.props;
+const YEARS = Array.from({ length: 12 }, (_, i) => String(2011 + i));
+---
+
+<div class="rounded-xl border border-border bg-white p-5 sm:p-6" data-data-url={dataUrl} data-default-label={defaultLabel} data-years={YEARS.join(',')}>
+  <p id="spe-status" class="text-xs text-charcoal/50">データを読み込み中…</p>
+
+  <div id="spe-body" class="hidden space-y-8">
+    <section>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-xs font-semibold tracking-wide text-charcoal/60">乗降客数ランキング（直近年度）</p>
+        <label class="text-xs text-charcoal/70">
+          都道府県:
+          <select id="spe-pref" class="ml-1 rounded-md border border-border px-2 py-1 text-navy">
+            <option value="">全国</option>
+          </select>
+        </label>
+      </div>
+      <ol id="spe-ranking" class="mt-3 divide-y divide-border rounded-xl border border-border"></ol>
+    </section>
+
+    <section>
+      <p class="text-xs font-semibold tracking-wide text-charcoal/60">駅を検索して推移を見る</p>
+      <label class="mt-2 block text-sm">
+        <span class="sr-only">駅名で検索</span>
+        <input
+          id="spe-input"
+          list="spe-stations"
+          type="text"
+          autocomplete="off"
+          placeholder="例: 新宿（東日本旅客鉄道 中央線）"
+          class="w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent"
+        />
+        <datalist id="spe-stations"></datalist>
+      </label>
+
+      <div id="spe-detail" class="mt-4 hidden">
+        <div class="grid gap-3 sm:grid-cols-3">
+          <div class="rounded-lg bg-bg-light p-4">
+            <p class="text-[11px] text-charcoal/50">直近年度の乗降客数</p>
+            <p id="spe-latest" class="mt-1 text-lg font-bold text-navy">-</p>
+          </div>
+          <div class="rounded-lg bg-bg-light p-4">
+            <p class="text-[11px] text-charcoal/50">事業者・路線</p>
+            <p id="spe-line" class="mt-1 text-sm font-semibold text-navy">-</p>
+          </div>
+          <div class="rounded-lg bg-bg-light p-4">
+            <p class="text-[11px] text-charcoal/50">都道府県</p>
+            <p id="spe-pref-label" class="mt-1 text-sm font-semibold text-navy">-</p>
+          </div>
+        </div>
+        <div class="mt-4">
+          <canvas id="spe-chart" height="240"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  import Chart from 'chart.js/auto';
+
+  interface StationRecord {
+    name: string;
+    stationCode: string;
+    groupCode: string;
+    operator: string;
+    line: string;
+    years: Record<string, number | null>;
+    latestVal: number;
+    latestYear: string;
+    prefecture: string;
+  }
+
+  const root = document.querySelector<HTMLElement>('[data-data-url]');
+  if (root) {
+    const dataUrl = root.dataset.dataUrl!;
+    const defaultLabel = root.dataset.defaultLabel ?? '';
+    const YEARS = (root.dataset.years ?? '').split(',');
+
+    const status = document.getElementById('spe-status') as HTMLParagraphElement;
+    const body = document.getElementById('spe-body') as HTMLDivElement;
+    const prefSelect = document.getElementById('spe-pref') as HTMLSelectElement;
+    const rankingEl = document.getElementById('spe-ranking') as HTMLOListElement;
+    const input = document.getElementById('spe-input') as HTMLInputElement;
+    const datalist = document.getElementById('spe-stations') as HTMLDataListElement;
+    const detailEl = document.getElementById('spe-detail') as HTMLDivElement;
+    const latestEl = document.getElementById('spe-latest') as HTMLParagraphElement;
+    const lineEl = document.getElementById('spe-line') as HTMLParagraphElement;
+    const prefLabelEl = document.getElementById('spe-pref-label') as HTMLParagraphElement;
+    const canvas = document.getElementById('spe-chart') as HTMLCanvasElement;
+
+    const fmt = (n: number) => n.toLocaleString('ja-JP');
+    const labelOf = (r: StationRecord) => `${r.name}（${r.operator} ${r.line}）`;
+
+    let byLabel = new Map<string, StationRecord>();
+    let chart: Chart | undefined;
+
+    function renderRanking(pref: string) {
+      const all = [...byLabel.values()];
+      const filtered = pref ? all.filter((r) => r.prefecture === pref) : all;
+      const top = filtered.sort((a, b) => b.latestVal - a.latestVal).slice(0, 20);
+
+      rankingEl.innerHTML = top
+        .map(
+          (r, i) => `
+            <li class="flex cursor-pointer items-center gap-4 px-5 py-3 hover:bg-bg-light" data-label="${labelOf(r).replace(/"/g, '&quot;')}">
+              <span class="w-6 shrink-0 text-right text-sm font-bold text-charcoal/40">${i + 1}</span>
+              <span class="flex-1 text-sm text-navy">${r.name} <span class="text-xs text-charcoal/50">${r.operator} ${r.line}</span></span>
+              <span class="shrink-0 text-xs text-charcoal/50">${r.prefecture}</span>
+              <span class="w-28 shrink-0 text-right text-sm font-semibold text-navy">${fmt(r.latestVal)}人/日</span>
+            </li>`,
+        )
+        .join('');
+
+      rankingEl.querySelectorAll<HTMLLIElement>('[data-label]').forEach((li) => {
+        li.addEventListener('click', () => {
+          const label = li.dataset.label!;
+          input.value = label;
+          selectStation(label);
+          detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      });
+    }
+
+    function selectStation(label: string) {
+      const r = byLabel.get(label);
+      if (!r) return;
+
+      detailEl.classList.remove('hidden');
+      latestEl.textContent = `約${fmt(r.latestVal)}人/日（${r.latestYear}年度）`;
+      lineEl.textContent = `${r.operator} ${r.line}`;
+      prefLabelEl.textContent = r.prefecture;
+
+      const values = YEARS.map((y) => r.years[y] ?? null);
+
+      if (chart) {
+        chart.data.datasets[0].data = values;
+        chart.update();
+      } else {
+        chart = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: YEARS,
+            datasets: [
+              {
+                label: '乗降客数（人/日）',
+                data: values,
+                borderColor: '#3B82F6',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.2,
+                spanGaps: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } },
+          },
+        });
+      }
+    }
+
+    input.addEventListener('change', () => {
+      if (byLabel.has(input.value.trim())) selectStation(input.value.trim());
+    });
+    input.addEventListener('input', () => {
+      if (byLabel.has(input.value.trim())) selectStation(input.value.trim());
+    });
+    prefSelect.addEventListener('change', () => renderRanking(prefSelect.value));
+
+    fetch(dataUrl)
+      .then((res) => res.json())
+      .then((data: StationRecord[]) => {
+        byLabel = new Map(data.map((r) => [labelOf(r), r]));
+
+        const prefs = [...new Set(data.map((r) => r.prefecture))].sort((a, b) => a.localeCompare(b, 'ja'));
+        prefSelect.innerHTML =
+          '<option value="">全国</option>' + prefs.map((p) => `<option value="${p}">${p}</option>`).join('');
+
+        datalist.innerHTML = [...byLabel.keys()]
+          .sort((a, b) => a.localeCompare(b, 'ja'))
+          .map((label) => `<option value="${label}"></option>`)
+          .join('');
+
+        status.classList.add('hidden');
+        body.classList.remove('hidden');
+
+        renderRanking('');
+
+        const initialLabel = byLabel.has(defaultLabel) ? defaultLabel : [...byLabel.keys()][0];
+        if (initialLabel) {
+          input.value = initialLabel;
+          selectStation(initialLabel);
+        }
+      })
+      .catch(() => {
+        status.textContent = 'データの読み込みに失敗しました。時間をおいて再度お試しください。';
+      });
+  }
+</script>
