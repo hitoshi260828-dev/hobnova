@@ -2,14 +2,17 @@
 import Logo from '../ui/Logo.astro';
 import ImagePlaceholder from '../ui/ImagePlaceholder.astro';
 import { SITE_TAGLINE } from '../../consts';
+import heroCamp from '../../assets/hero/hero-camp.png';
+import heroGadget from '../../assets/hero/hero-gadget.png';
+import heroData from '../../assets/hero/hero-data.png';
+import heroMarketing from '../../assets/hero/hero-marketing.png';
 
-// フォトコラージュ用の画像スロット。実写真・イラストが用意でき次第、
-// ここに import した画像を渡せばそのまま差し替わる（未指定の間はプレースホルダー表示）。
-const collage: { image?: undefined; alt: string }[] = [
-  { alt: 'キャンプの様子' },
-  { alt: 'ゴルフの様子' },
-  { alt: 'ガジェット・データ分析の様子' },
-  { alt: '車・ドライブの様子' },
+// フォトコラージュ用の画像スロット。
+const collage = [
+  { image: heroCamp, alt: 'キャンプの様子' },
+  { image: heroGadget, alt: 'ガジェットに囲まれたワークスペース' },
+  { image: heroData, alt: 'データを分析する様子' },
+  { image: heroMarketing, alt: 'デジタルマーケティングのイメージ' },
 ];
 ---
 

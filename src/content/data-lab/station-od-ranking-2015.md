@@ -6,6 +6,7 @@ tags: ["交通データ", "首都圏", "駅データ"]
 draft: false
 featured: true
 source: "第12回大都市交通センサス（2015年調査・国土交通省）／e-Stat 政府統計の総合窓口"
+image: "./station-od-ranking-hero.png"
 explorerId: "station-od-ranking"
 ---
 

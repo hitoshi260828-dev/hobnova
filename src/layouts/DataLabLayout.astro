@@ -7,6 +7,7 @@ import ArticleJsonLd from '../components/seo/ArticleJsonLd.astro';
 import ChartBlock from '../components/datalab/ChartBlock.astro';
 import RankingTable from '../components/datalab/RankingTable.astro';
 import DataTable from '../components/datalab/DataTable.astro';
+import ImagePlaceholder from '../components/ui/ImagePlaceholder.astro';
 import { formatDate } from '../lib/format';
 
 interface Props {
@@ -14,10 +15,11 @@ interface Props {
 }
 
 const { entry } = Astro.props;
-const { title, description, publishDate, updatedDate, stats, chart, ranking, table, source, author } = entry.data;
+const { title, description, publishDate, updatedDate, stats, chart, ranking, table, source, author, image } =
+  entry.data;
 ---
 
-<BaseLayout title={title} description={description} type="article">
+<BaseLayout title={title} description={description} image={image?.src} type="article">
   <Fragment slot="head-extra">
     <ArticleJsonLd title={title} description={description} publishDate={publishDate} updatedDate={updatedDate} author={author} />
     <BreadcrumbJsonLd items={[{ label: 'DATA LAB', href: '/data-lab/' }, { label: title }]} />
@@ -38,6 +40,14 @@ const { title, description, publishDate, updatedDate, stats, chart, ranking, tab
       </div>
     </div>
   </header>
+
+  {
+    image && (
+      <div class="mx-auto max-w-3xl px-4 pt-8 sm:px-6">
+        <ImagePlaceholder image={image} alt={title} aspect="aspect-[16/9]" class="rounded-xl border border-border" />
+      </div>
+    )
+  }
 
   <div class="mx-auto max-w-3xl space-y-10 px-4 py-10 sm:px-6">
     {

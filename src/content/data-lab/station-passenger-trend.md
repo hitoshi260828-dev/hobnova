@@ -6,6 +6,7 @@ tags: ["交通データ", "駅データ", "全国"]
 draft: false
 featured: true
 source: "国土数値情報 駅別乗降客数データ（S12）2022年度版・国土交通省"
+image: "./station-passenger-trend-hero.png"
 explorerId: "station-passenger-trend"
 ---
 
