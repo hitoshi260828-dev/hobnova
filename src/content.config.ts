@@ -79,6 +79,9 @@ const dataLab = defineCollection({
           rows: z.array(z.array(z.string())),
         })
         .optional(),
+      // 条件検索・フィルターなど、静的なfrontmatterでは表現できないインタラクティブな
+      // 探索UIを埋め込む場合に指定する（TOOLSのtoolIdと同じパターン）。
+      explorerId: z.string().optional(),
     }),
 });
 

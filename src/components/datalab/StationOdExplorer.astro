@@ -1,0 +1,169 @@
+---
+// 乗車駅別 降車駅ランキング（首都圏・定期券利用者、2015年大都市交通センサス）の
+// インタラクティブ探索UI。データは public/data/ に置いた静的JSON（約2MB）を
+// クライアント側でfetchする（1,428駅ぶんの実データのためfrontmatterには収まらない）。
+interface Props {
+  dataUrl: string;
+  defaultOrigin?: string;
+}
+
+const { dataUrl, defaultOrigin = '新宿' } = Astro.props;
+---
+
+<div class="rounded-xl border border-border bg-white p-5 sm:p-6" data-data-url={dataUrl} data-default-origin={defaultOrigin}>
+  <label class="block text-sm">
+    <span class="text-charcoal/70">乗車駅を選択（1,428駅から検索）</span>
+    <input
+      id="soe-input"
+      list="soe-stations"
+      type="text"
+      autocomplete="off"
+      placeholder="例: 新宿"
+      class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent"
+    />
+    <datalist id="soe-stations"></datalist>
+  </label>
+
+  <p id="soe-status" class="mt-3 text-xs text-charcoal/50">データを読み込み中…</p>
+
+  <div id="soe-result" class="mt-6 hidden">
+    <div class="grid gap-3 sm:grid-cols-3">
+      <div class="rounded-lg bg-bg-light p-4">
+        <p class="text-[11px] text-charcoal/50">定期券利用者数（推計・片道/日）</p>
+        <p id="soe-total" class="mt-1 text-lg font-bold text-navy">-</p>
+      </div>
+      <div class="rounded-lg bg-bg-light p-4">
+        <p class="text-[11px] text-charcoal/50">利用者数の順位（全1,428駅中）</p>
+        <p id="soe-rank" class="mt-1 text-lg font-bold text-navy">-</p>
+      </div>
+      <div class="rounded-lg bg-bg-light p-4">
+        <p class="text-[11px] text-charcoal/50">最多降車駅への集中度</p>
+        <p id="soe-top-share" class="mt-1 text-lg font-bold text-navy">-</p>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <canvas id="soe-chart" height="240"></canvas>
+    </div>
+
+    <div class="mt-6">
+      <p class="text-xs font-semibold tracking-wide text-charcoal/60">降車駅ランキング（上位15駅）</p>
+      <ol id="soe-ranking" class="mt-3 divide-y divide-border rounded-xl border border-border"></ol>
+    </div>
+  </div>
+</div>
+
+<script>
+  import Chart from 'chart.js/auto';
+
+  interface OriginEntry {
+    total: number;
+    origin: string;
+    dest: { c: number; n: string }[];
+  }
+
+  const root = document.querySelector<HTMLElement>('[data-data-url]');
+  if (root) {
+    const dataUrl = root.dataset.dataUrl!;
+    const defaultOrigin = root.dataset.defaultOrigin ?? '';
+
+    const input = document.getElementById('soe-input') as HTMLInputElement;
+    const datalist = document.getElementById('soe-stations') as HTMLDataListElement;
+    const status = document.getElementById('soe-status') as HTMLParagraphElement;
+    const resultEl = document.getElementById('soe-result') as HTMLDivElement;
+    const totalEl = document.getElementById('soe-total') as HTMLParagraphElement;
+    const rankEl = document.getElementById('soe-rank') as HTMLParagraphElement;
+    const topShareEl = document.getElementById('soe-top-share') as HTMLParagraphElement;
+    const canvas = document.getElementById('soe-chart') as HTMLCanvasElement;
+    const rankingEl = document.getElementById('soe-ranking') as HTMLOListElement;
+
+    let chart: Chart | undefined;
+    let byOrigin = new Map<string, OriginEntry>();
+    let rankByOrigin = new Map<string, number>();
+
+    const fmt = (n: number) => n.toLocaleString('ja-JP');
+
+    function render(entry: OriginEntry) {
+      resultEl.classList.remove('hidden');
+
+      totalEl.textContent = `約${fmt(entry.total)}人/日`;
+      rankEl.textContent = `${fmt(rankByOrigin.get(entry.origin) ?? 0)}位`;
+
+      const top = entry.dest[0];
+      topShareEl.textContent = top ? `${top.n}へ ${((top.c / entry.total) * 100).toFixed(1)}%` : '-';
+
+      const top15 = entry.dest.slice(0, 15);
+      rankingEl.innerHTML = top15
+        .map(
+          (d, i) => `
+            <li class="flex items-center gap-4 px-5 py-3">
+              <span class="w-6 shrink-0 text-right text-sm font-bold text-charcoal/40">${i + 1}</span>
+              <span class="flex-1 text-sm text-navy">${d.n}</span>
+              <span class="shrink-0 text-xs text-charcoal/50">${((d.c / entry.total) * 100).toFixed(1)}%</span>
+              <span class="w-24 shrink-0 text-right text-sm font-semibold text-navy">${fmt(d.c)}人/日</span>
+            </li>`,
+        )
+        .join('');
+
+      const top8 = entry.dest.slice(0, 8);
+      const labels = top8.map((d) => d.n);
+      const values = top8.map((d) => d.c);
+
+      if (chart) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
+      } else {
+        chart = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{ label: '降車人数（人/日）', data: values, backgroundColor: '#3B82F6' }],
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } },
+          },
+        });
+      }
+    }
+
+    function selectStation(name: string) {
+      const entry = byOrigin.get(name);
+      if (!entry) return;
+      render(entry);
+    }
+
+    input.addEventListener('change', () => selectStation(input.value.trim()));
+    input.addEventListener('input', () => {
+      if (byOrigin.has(input.value.trim())) selectStation(input.value.trim());
+    });
+
+    fetch(dataUrl)
+      .then((res) => res.json())
+      .then((data: OriginEntry[]) => {
+        byOrigin = new Map(data.map((d) => [d.origin, d]));
+
+        const sorted = [...data].sort((a, b) => b.total - a.total);
+        sorted.forEach((d, i) => rankByOrigin.set(d.origin, i + 1));
+
+        datalist.innerHTML = data
+          .map((d) => d.origin)
+          .sort((a, b) => a.localeCompare(b, 'ja'))
+          .map((name) => `<option value="${name}"></option>`)
+          .join('');
+
+        status.textContent = `${data.length.toLocaleString('ja-JP')}駅のデータを読み込みました。駅名を入力して検索してください。`;
+
+        const initial = byOrigin.get(defaultOrigin) ?? data[0];
+        if (initial) {
+          input.value = initial.origin;
+          selectStation(initial.origin);
+        }
+      })
+      .catch(() => {
+        status.textContent = 'データの読み込みに失敗しました。時間をおいて再度お試しください。';
+      });
+  }
+</script>
