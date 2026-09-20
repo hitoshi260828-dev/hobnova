@@ -29,3 +29,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # LINE SecretsをPRコードへ渡さないため、通知はこのworkflowとは別の
+  # workflow_run（default branch上の信頼済みコード）で実行する。

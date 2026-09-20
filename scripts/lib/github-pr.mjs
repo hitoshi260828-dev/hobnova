@@ -1,111 +1,113 @@
-// GitHub PRのstatus check待機とCloudflare Pages Preview URL解決。
-//
-// GitHub CLI (`gh`) をサブプロセスとして呼び出す方式を採用している。理由:
-// - ローカルでは既にキーリング認証済みの gh をそのまま使える（追加のトークン管理不要）
-// - GitHub Actions のランナーには gh がプリインストールされており、GITHUB_TOKEN を
-//   自動的に拾って認証するため、このモジュールはコード変更なしでCI上でも動く
+// GitHub PRとCloudflare Pages Previewを扱うヘルパー。
+// GitHub Actionsに標準搭載されるghを使い、認証情報を独自に保持しない。
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+const CONTENT_PATH = /^src\/content\/(articles|data-lab|tools)\/.+\.(md|mdx)$/;
+const NOTIFICATION_MARKER = "hobnova-line-notification";
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function ghJson(args, input) {
+  const { stdout } = await execFileAsync("gh", args, {
+    input,
+    env: process.env,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  return stdout.trim() ? JSON.parse(stdout) : null;
 }
 
-async function ghJson(args) {
-  const { stdout } = await execFileAsync("gh", args, { maxBuffer: 10 * 1024 * 1024 });
-  return JSON.parse(stdout);
-}
-
-/**
- * PRのstatus check rollup（GitHub Actions・Cloudflare Pages等すべて）を取得する。
- */
 async function getPrView(prNumber) {
-  return ghJson(["pr", "view", String(prNumber), "--json", "statusCheckRollup,url,headRefName,comments"]);
+  return ghJson(["pr", "view", String(prNumber), "--json", "url,headRefOid,comments,title,body"]);
 }
 
-/**
- * すべてのstatus checkが完了するまでポーリングし、成功/失敗/timeoutを返す。
- * 無限ループにならないよう timeoutMs で必ず打ち切る。
- */
-export async function waitForPrChecks(prNumber, { timeoutMs = 5 * 60 * 1000, pollIntervalMs = 10000, onPoll } = {}) {
-  const start = Date.now();
+function marker(headSha, state) {
+  return `<!-- ${NOTIFICATION_MARKER}:${headSha}:${state} -->`;
+}
 
-  while (true) {
-    const data = await getPrView(prNumber);
-    const checks = data.statusCheckRollup ?? [];
-    if (onPoll) onPoll(checks);
-
-    const hasChecks = checks.length > 0;
-    const allCompleted = hasChecks && checks.every((c) => (c.status ?? "COMPLETED") === "COMPLETED");
-
-    if (allCompleted) {
-      const failed = checks.filter((c) => c.conclusion && !["SUCCESS", "NEUTRAL", "SKIPPED"].includes(c.conclusion));
-      return { ok: failed.length === 0, timedOut: false, checks, failed, prUrl: data.url, headRefName: data.headRefName };
+function parseFrontmatter(source) {
+  const block = source.match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!block) return {};
+  const value = (name) => {
+    const match = block[1].match(new RegExp(`^${name}:\\s*(.+?)\\s*$`, "m"));
+    if (!match) return null;
+    const raw = match[1].trim();
+    if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+      return raw.slice(1, -1).replace(/\\([\\"'])/g, "$1");
     }
-
-    if (Date.now() - start > timeoutMs) {
-      return { ok: false, timedOut: true, checks, failed: [], prUrl: data.url, headRefName: data.headRefName };
-    }
-
-    await sleep(pollIntervalMs);
-  }
-}
-
-function sanitizeBranchForPreviewUrl(branchName) {
-  return branchName
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-/**
- * Cloudflare PagesのボットがPRへ投稿するコメントから Preview URL を抽出する。
- * 優先順位: PR固有のPreview URL（コミットハッシュ単位） > Branch Preview URL
- */
-function extractCloudflarePreviewUrls(commentBody) {
-  const previewMatch = commentBody.match(/Preview URL:<\/strong><\/td><td>\s*<a href='([^']+)'/i);
-  const branchMatch = commentBody.match(/Branch Preview URL:<\/strong><\/td><td>\s*<a href='([^']+)'/i);
-  return {
-    previewUrl: previewMatch?.[1] ?? null,
-    branchPreviewUrl: branchMatch?.[1] ?? null,
+    return raw;
   };
+  return { title: value("title"), summary: value("description") };
+}
+
+async function getFileAtRef(path, ref) {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const data = await ghJson(["api", `repos/{owner}/{repo}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`]);
+  return Buffer.from(data.content, "base64").toString("utf8");
+}
+
+/** PRで追加・更新された記事を1件取得する。記事以外、削除のみ、画像のみのPRはnull。 */
+export async function getChangedArticle(prNumber, headSha) {
+  const pages = await ghJson(["api", "--paginate", "--slurp", `repos/{owner}/{repo}/pulls/${prNumber}/files?per_page=100`]);
+  const files = pages.flat();
+  const article = files.find((file) => file.status !== "removed" && CONTENT_PATH.test(file.filename));
+  if (!article) return null;
+  const metadata = parseFrontmatter(await getFileAtRef(article.filename, headSha));
+  if (!metadata.title || !metadata.summary) {
+    throw new Error(`${article.filename} のtitleまたはdescriptionを取得できません。`);
+  }
+  return { ...metadata, path: article.filename };
 }
 
 /**
- * Preview URLを解決する。timeoutMs以内にCloudflareのコメントが見つからない場合は、
- * ブランチ名から決定論的に導出したBranch Preview URLをfallbackとして返す
- * （実際のデプロイが遅れて404になる可能性はあるが、無限待機は避ける）。
+ * Cloudflare botの実際のPRコメント形式を使う。現在のhead SHA、Deploy successful、
+ * Preview URLの3つが同じコメントに揃うまで待つため、古いPreviewを通知しない。
  */
-export async function resolvePreviewUrl(prNumber, headRefName, { timeoutMs = 3 * 60 * 1000, pollIntervalMs = 10000, projectName = "hobnova" } = {}) {
+export async function waitForCloudflarePreview(prNumber, headSha, { timeoutMs = 10 * 60 * 1000, pollIntervalMs = 10000 } = {}) {
   const start = Date.now();
-
   while (true) {
     const data = await getPrView(prNumber);
-    const comments = data.comments ?? [];
-    const cfComment = comments.find(
-      (c) => c.author?.login === "cloudflare-workers-and-pages" || /Cloudflare Pages/i.test(c.body ?? "")
-    );
-
-    if (cfComment) {
-      const { previewUrl, branchPreviewUrl } = extractCloudflarePreviewUrls(cfComment.body ?? "");
-      if (previewUrl || branchPreviewUrl) {
-        return {
-          url: previewUrl ?? branchPreviewUrl,
-          source: previewUrl ? "pr-comment-preview-url" : "pr-comment-branch-url",
-        };
+    if (data.headRefOid !== headSha) return { stale: true };
+    const shortSha = headSha.slice(0, 7);
+    for (const comment of data.comments ?? []) {
+      const body = comment.body ?? "";
+      const isCloudflare = comment.author?.login?.startsWith("cloudflare-workers-and-pages") || /Cloudflare Pages/i.test(body);
+      const deployedSha = body.match(/Latest commit:<\/strong>\s*<\/td><td>\s*<code>([0-9a-f]+)<\/code>/i)?.[1];
+      const previewUrl = body.match(/Preview URL:<\/strong><\/td><td>\s*<a href=['"](https:\/\/[^'"]+)['"]/i)?.[1];
+      if (isCloudflare && deployedSha === shortSha && /Deploy successful!/i.test(body) && previewUrl) {
+        return { previewUrl, prUrl: data.url };
       }
     }
-
-    if (Date.now() - start > timeoutMs) {
-      const branch = headRefName ?? data.headRefName;
-      return {
-        url: `https://${sanitizeBranchForPreviewUrl(branch)}.${projectName}.pages.dev`,
-        source: "fallback-computed-branch-url",
-      };
+    if (Date.now() - start >= timeoutMs) {
+      throw new Error(`Cloudflare Pages Previewが${timeoutMs}ms以内に成功しませんでした。`);
     }
-
     await sleep(pollIntervalMs);
   }
+}
+
+/** SHA単位のclaimコメントを作り、同じcommitへの二重送信を防ぐ。 */
+export async function claimNotification(prNumber, headSha) {
+  const data = await getPrView(prNumber);
+  // 待機中に新しいcommitがpushされた場合、古いPreviewの通知は送らない。
+  if (data.headRefOid !== headSha) return { claimed: false, state: "stale" };
+  const existing = (data.comments ?? []).find((comment) => (comment.body ?? "").includes(`${NOTIFICATION_MARKER}:${headSha}:`));
+  if (existing) return { claimed: false, state: existing.body.includes(":sent -->") ? "sent" : "claimed" };
+
+  const comment = await ghJson([
+    "api", `repos/{owner}/{repo}/issues/${prNumber}/comments`, "--method", "POST",
+    "-f", `body=${marker(headSha, "claimed")}\nLINE通知を準備しています。`,
+  ]);
+  return { claimed: true, commentId: comment.id };
+}
+
+export async function completeNotification(commentId, headSha) {
+  await ghJson([
+    "api", `repos/{owner}/{repo}/issues/comments/${commentId}`, "--method", "PATCH",
+    "-f", `body=${marker(headSha, "sent")}\nこのcommitの記事完成通知をLINEへ送信しました。`,
+  ]);
+}
+
+export async function releaseNotification(commentId) {
+  await ghJson(["api", `repos/{owner}/{repo}/issues/comments/${commentId}`, "--method", "DELETE"]);
 }

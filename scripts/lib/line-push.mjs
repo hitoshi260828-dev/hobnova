@@ -6,28 +6,9 @@
 //   複製している。claude-line-notifier はHOBNOVAとは別のGitリポジトリ（ローカルの
 //   sibling フォルダ）であり、GitHub Actions等のクラウド環境ではチェックアウトされない
 //   ため、そこへ直接importする構成は将来ポータブルにならない。
-// - 秘密情報（トークン）はprocess.envから読む。ローカル実行時の便宜のため、
-//   process.envに値がまだ無ければ claude-line-notifier/.env を読み込むフォールバックを
-//   用意しているが、CI（GitHub Actions Secrets経由）ではそちらは存在しないため
-//   何もせずスキップされ、常にprocess.env側が優先される。
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+// - 秘密情報はGitHub Actions Secretsからprocess.envへ渡す。ローカルファイルは読まない。
 
 const LINE_PUSH_ENDPOINT = "https://api.line.me/v2/bot/message/push";
-
-function loadLocalFallbackEnv() {
-  if (process.env.LINE_CHANNEL_ACCESS_TOKEN && process.env.LINE_USER_ID) return;
-
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  // HOBNOVA/scripts/lib -> HOBNOVA -> code作業場 -> claude-line-notifier/.env
-  const fallbackEnvPath = path.join(here, "..", "..", "..", "claude-line-notifier", ".env");
-  if (existsSync(fallbackEnvPath)) {
-    process.loadEnvFile(fallbackEnvPath);
-  }
-}
-
-loadLocalFallbackEnv();
 
 export const lineConfig = {
   get channelAccessToken() {
@@ -38,6 +19,10 @@ export const lineConfig = {
   },
 };
 
+export function isLineConfigured() {
+  return Boolean(lineConfig.channelAccessToken && lineConfig.lineUserId);
+}
+
 export function assertLineConfigured() {
   const missing = [];
   if (!lineConfig.channelAccessToken) missing.push("LINE_CHANNEL_ACCESS_TOKEN");
@@ -45,7 +30,7 @@ export function assertLineConfigured() {
   if (missing.length > 0) {
     throw new Error(
       `LINE通知に必要な環境変数が未設定です: ${missing.join(", ")}\n` +
-        `ローカルではclaude-line-notifier/.env、CIではGitHub Actions Secretsを確認してください。`
+        `GitHub Actions Secretsを確認してください。`
     );
   }
 }
@@ -70,7 +55,7 @@ export async function sendLinePush(text) {
   });
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`LINE push failed: ${res.status} ${res.statusText} ${body}`);
+    // APIレスポンスに秘密情報や宛先由来の情報が含まれる可能性があるため本文はログへ出さない。
+    throw new Error(`LINE push failed: ${res.status} ${res.statusText}`);
   }
 }
