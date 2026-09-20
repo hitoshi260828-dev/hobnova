@@ -4,7 +4,7 @@ description: "2026年9月のAIエージェント最新ニュースを整理。Op
 publishDate: 2026-09-20
 category: "marketing"
 tags: ["AIエージェント", "生成AI", "MCP", "A2A"]
-image: "./ai-agent-news-2026-09-hero.svg"
+image: "./ai-agent-news-2026-09-hero.png.png"
 draft: false
 featured: false
 ---
