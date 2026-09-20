@@ -16,8 +16,8 @@ Core Web Vitalsを改善するとき、PageSpeed Insightsの総合点を100に�
 | 指標 | 何を測るか | 「良好」の目安 |
 |---|---|---:|
 | LCP | 主なコンテンツが表示される速さ | 2.5秒以下 |
-| INP | 操作してから画面が反応するまで | 200ミリ秒未満 |
-| CLS | 表示中にレイアウトがずれる度合い | 0.1未満 |
+| INP | 操作してから画面が反応するまで | 200ミリ秒以下 |
+| CLS | 表示中にレイアウトがずれる度合い | 0.1以下 |
 
 基準値は[Google Search CentralのCore Web Vitals解説](https://developers.google.com/search/docs/appearance/core-web-vitals)で確認しました。この記事では、実機計測を行った体験談ではなく、Googleの公式資料をもとにした調査・整理として、改善の順番を具体化します。
 
