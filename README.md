@@ -62,6 +62,10 @@ featured: false
 Claude Codeに「〇〇についてCAMPカテゴリの記事を書いて」のように自然言語で指示すれば、
 このフォーマットに沿って下書きを作成できます。
 
+AIエージェントによるテーマ選定から調査、画像制作、実装、検証、PRまでの必須手順と完成条件は、
+[AI記事制作ガイドライン](./docs/ai-article-guidelines.md)を参照してください。短いおまかせ依頼にも
+ルートの`AGENTS.md`を通じて自動適用されます。
+
 ## 6. DATA LABコンテンツを追加する
 
 `src/content/data-lab/` に Markdown ファイルを追加します。`stats`（主要指標）に加えて、
