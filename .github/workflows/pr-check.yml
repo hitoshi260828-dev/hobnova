@@ -1,0 +1,31 @@
+name: PR Check
+
+# main向けのPull Requestが作成・更新されたときに、型チェックとビルドを自動実行する。
+# このチェックの成功は、main側のブランチ保護ルールでMerge必須条件として設定している。
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-and-build:
+    name: astro check & build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Astro check
+        run: npx astro check
+
+      - name: Build
+        run: npm run build
