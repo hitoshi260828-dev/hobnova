@@ -67,9 +67,9 @@ binding名 `CONTACT_RATE_LIMIT` を紐付ける。
    → 「Add secret」で `TURNSTILE_SECRET_KEY` として登録する（**Secretタイプ**で登録し、
    リポジトリには絶対にコミットしない）
 
-## 4. admin API / MCP 用トークンの発行
+## 4. admin API 用トークンの発行
 
-ChatGPT（admin API・MCP）が使う認証トークンを生成する。例:
+admin API（`GET/PATCH /api/admin/contacts`）が使う認証トークンを生成する。例:
 
 ```bash
 node -e "console.log(crypto.randomUUID() + crypto.randomUUID())"
@@ -78,6 +78,23 @@ node -e "console.log(crypto.randomUUID() + crypto.randomUUID())"
 生成した値を、ダッシュボード → Pages プロジェクト → Settings → Environment variables →
 「Add secret」で `HOBNOVA_CONTACT_API_TOKEN` として登録する（Production/Preview両方、
 必要に応じて）。このトークンは repository・クライアント側JS・ログのどこにも出力しない。
+
+## 4-2. MCP（ChatGPT接続）用オーナーシークレットの発行
+
+MCP（`/api/mcp`）は、ChatGPTのカスタムMCPアプリがBearer Token直接設定に対応していない
+ため、OAuth 2.1（Authorization Code + PKCE）で保護している。ChatGPTが接続時にOAuth
+認可画面（`/oauth/authorize`）を開くと、以下で発行する**オーナーシークレット**の入力を
+求められる。これは `HOBNOVA_CONTACT_API_TOKEN` とは別物。
+
+```bash
+node -e "console.log(crypto.randomUUID() + crypto.randomUUID())"
+```
+
+生成した値を、ダッシュボード → Pages プロジェクト → Settings → Environment variables →
+「Add secret」で `HOBNOVA_OAUTH_OWNER_SECRET` として登録する（Production/Preview両方）。
+このシークレットは、ChatGPTからの接続を許可するたびに一度だけ入力する（発行された
+access token / refresh tokenはD1にハッシュのみ保存され、以後の自動確認はそのトークンで
+行われるため、毎回入力する必要はない）。
 
 ## 5. Pages Functions の反映確認
 
@@ -102,15 +119,33 @@ curl -s "https://hobnova.jp/api/admin/contacts?limit=1" \
 - `GET /api/admin/contacts/:id` で詳細
 - `PATCH /api/admin/contacts/:id`（body: `{"status":"read"}`）でステータス更新
 
-### MCP（Streamable HTTP）を使う場合
+### MCP（Streamable HTTP、OAuth 2.1）を使う場合
 
-- MCP エンドポイント: `https://hobnova.jp/api/mcp`（単一エンドポイント、POSTのみ）
-- 認証: 同じく `Authorization: Bearer <HOBNOVA_CONTACT_API_TOKEN>` ヘッダー
+ChatGPTの「カスタムMCPアプリを作成」画面で、以下のように設定する:
+
+- MCPサーバーURL: `https://hobnova.jp/api/mcp`
+- 認証方式: **OAuth**
+- Client ID / Client Secretの入力欄が出た場合は空欄でよい（Dynamic Client Registration
+  で自動登録される。当サーバーはpublic client方式で `client_secret` を発行しない）
+
+接続時、ブラウザで `https://hobnova.jp/oauth/authorize` が開き、上記4-2で発行した
+**オーナーシークレット**の入力を求められる。正しく入力すると、ChatGPT側に
+access token / refresh token が発行され、以後はこのトークンで自動接続される。
+
+技術詳細:
+- Protected Resource Metadata: `GET /.well-known/oauth-protected-resource` (RFC 9728)
+- Authorization Server Metadata: `GET /.well-known/oauth-authorization-server` (RFC 8414)
+- Dynamic Client Registration: `POST /oauth/register` (RFC 7591)
+- Authorization endpoint: `GET/POST /oauth/authorize`（PKCE S256必須、state必須）
+- Token endpoint: `POST /oauth/token`（`authorization_code` / `refresh_token`）
+- access tokenの有効期限は1時間、refresh tokenは90日（使用の都度ローテーション）
 - セッション管理（`Mcp-Session-Id`）は未実装（ステートレス。MCP仕様上は任意項目）
 - 提供ツール: `list_contacts`（引数: `status`, `limit`）、`get_contact`（引数: `id`）、
   `update_contact_status`（引数: `id`, `status`）
 - ChatGPT側の「1日1回確認」スケジュールはユーザー側で設定済みのため、Cloudflare側に
   cron/schedule は追加していない。
+- admin API（`HOBNOVA_CONTACT_API_TOKEN`によるBearer認証）とMCP（OAuth）は別トークン
+  体系。MCPのaccess tokenはadmin APIへは使えず、その逆も同様。
 
 **重要**: `list_contacts` で取得しただけでは `status` は自動的に `read` へ変わらない。
 ユーザーが内容を確認した後、必要に応じて `update_contact_status` を呼び出すこと。
@@ -120,11 +155,13 @@ curl -s "https://hobnova.jp/api/admin/contacts?limit=1" \
 ```bash
 npm run build
 npx wrangler d1 execute hobnova_contacts --local --file=migrations/0001_create_contacts.sql
+npx wrangler d1 execute hobnova_contacts --local --file=migrations/0002_create_oauth_tables.sql
 
 # .dev.vars（.gitignore済み・本番Secretとは別の値を使う）
 cat <<'EOF' > .dev.vars
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 HOBNOVA_CONTACT_API_TOKEN=local-test-token
+HOBNOVA_OAUTH_OWNER_SECRET=local-owner-secret
 EOF
 
 npx wrangler pages dev dist --port 8788 --local

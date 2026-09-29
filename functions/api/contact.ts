@@ -2,7 +2,7 @@ import type { Env } from '../_lib/types';
 import { jsonResponse, errorResponse } from '../_lib/json';
 import { validateContactInput } from '../_lib/validate';
 import { verifyTurnstile } from '../_lib/turnstile';
-import { checkRateLimit } from '../_lib/ratelimit';
+import { checkContactRateLimit } from '../_lib/ratelimit';
 import { computeDuplicateHash } from '../_lib/hash';
 import { findRecentDuplicate, insertContact } from '../_lib/db';
 
@@ -43,7 +43,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
 
-  const rateLimit = await checkRateLimit(env.CONTACT_RATE_LIMIT, ip);
+  const rateLimit = await checkContactRateLimit(env.CONTACT_RATE_LIMIT, ip);
   if (!rateLimit.allowed) {
     return errorResponse('Too many requests', 429);
   }

@@ -3,6 +3,9 @@ export interface Env {
   CONTACT_RATE_LIMIT: KVNamespace;
   TURNSTILE_SECRET_KEY: string;
   HOBNOVA_CONTACT_API_TOKEN: string;
+  // MCPのOAuth認可サーバーで、consent画面のオーナー認証に使う専用シークレット。
+  // HOBNOVA_CONTACT_API_TOKEN（admin API用）とは別物。
+  HOBNOVA_OAUTH_OWNER_SECRET: string;
 }
 
 export const CONTACT_TYPES = ['advertising', 'tieup', 'product', 'review', 'other'] as const;
