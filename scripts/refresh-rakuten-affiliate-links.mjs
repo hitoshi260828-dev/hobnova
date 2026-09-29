@@ -94,12 +94,22 @@ function pickVerifiedItem(target, data) {
   return { resultCount: items.length, candidateCount: candidates.length, item: verified ?? null };
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function main() {
   let source = await fs.readFile(filePath, 'utf8');
   let updatedCount = 0;
   let skippedCount = 0;
+  let isFirstRequest = true;
 
   for (const target of targets) {
+    // 楽天市場商品検索APIのレート制限（1リクエスト/秒）を超えないよう、
+    // 2件目以降は前回リクエストから最低1秒あけて送信する。
+    if (!isFirstRequest) {
+      await sleep(1100);
+    }
+    isFirstRequest = false;
+
     console.log(`[rakuten] 検索対象: ${target.id} (keyword="${target.keyword}")`);
 
     let data;
