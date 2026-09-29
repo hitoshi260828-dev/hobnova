@@ -7,9 +7,9 @@ import sitemap from '@astrojs/sitemap';
 import mdx from '@astrojs/mdx';
 
 // https://astro.build/config
-// NOTE: `site` はドメイン確定後に本番URLへ差し替えること（canonical / OGP / sitemap に影響）。
+// 本番URL。canonical / OGP / sitemap の基準URLとして使用。
 export default defineConfig({
-  site: 'https://hobnova.com',
+  site: 'https://hobnova.jp',
   trailingSlash: 'always',
 
   vite: {
