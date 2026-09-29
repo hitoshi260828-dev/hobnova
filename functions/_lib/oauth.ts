@@ -1,11 +1,33 @@
 import { generateRandomToken, sha256Hex } from './hash';
 
-export const ISSUER = 'https://hobnova.jp';
-export const MCP_RESOURCE = 'https://hobnova.jp/api/mcp';
-export const AUTHORIZATION_ENDPOINT = `${ISSUER}/oauth/authorize`;
-export const TOKEN_ENDPOINT = `${ISSUER}/oauth/token`;
-export const REGISTRATION_ENDPOINT = `${ISSUER}/oauth/register`;
-export const PROTECTED_RESOURCE_METADATA_URL = `${ISSUER}/.well-known/oauth-protected-resource`;
+// issuer/resource等は、リクエストを実際に受けたoriginから動的に導出する（固定ホスト名を
+// ハードコードしない）。これにより本番(hobnova.jp)だけでなく、Cloudflare PagesのPreview
+// デプロイ（PRごとに異なるホスト名）でもOAuthフロー全体が自己整合的に完結する。
+// resourceとissuerは、実際にアクセスされたホストと必ず一致していなければならない
+// （不一致はChatGPT等のクライアント側で拒否される）。
+export function issuerFromRequest(request: Request): string {
+  return new URL(request.url).origin;
+}
+
+export function mcpResource(origin: string): string {
+  return `${origin}/api/mcp`;
+}
+
+export function authorizationEndpoint(origin: string): string {
+  return `${origin}/oauth/authorize`;
+}
+
+export function tokenEndpoint(origin: string): string {
+  return `${origin}/oauth/token`;
+}
+
+export function registrationEndpoint(origin: string): string {
+  return `${origin}/oauth/register`;
+}
+
+export function protectedResourceMetadataUrl(origin: string): string {
+  return `${origin}/.well-known/oauth-protected-resource`;
+}
 
 const AUTH_CODE_TTL_MS = 60_000; // 60秒（短命・使い捨て）
 const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000; // 1時間

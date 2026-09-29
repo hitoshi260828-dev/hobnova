@@ -1,7 +1,7 @@
 import type { Env } from '../_lib/types';
 import { CONTACT_STATUSES, toPublicContact, type ContactStatus } from '../_lib/types';
 import { listContacts, getContactById, updateContactStatus } from '../_lib/db';
-import { MCP_RESOURCE, PROTECTED_RESOURCE_METADATA_URL, validateAccessToken } from '../_lib/oauth';
+import { issuerFromRequest, mcpResource, protectedResourceMetadataUrl, validateAccessToken } from '../_lib/oauth';
 
 // MCP Streamable HTTP transport（単一エンドポイント、ステートレス実装）。
 // セッション管理(Mcp-Session-Id)は必須ではないため実装せず、リクエストごとに完結させる。
@@ -9,13 +9,14 @@ import { MCP_RESOURCE, PROTECTED_RESOURCE_METADATA_URL, validateAccessToken } fr
 // admin APIとは別トークン体系。ChatGPTのカスタムMCPアプリがOAuth以外を選べないための対応。
 const PROTOCOL_VERSION = '2025-06-18';
 
-function unauthorizedResponse(errorMessage: string) {
+function unauthorizedResponse(request: Request, errorMessage: string) {
+  const origin = issuerFromRequest(request);
   return new Response(JSON.stringify(rpcError(null, -32001, errorMessage)), {
     status: 401,
     headers: {
       'content-type': 'application/json',
       // RFC 9728 Section 5.1: 401時にProtected Resource Metadataの場所を示す。
-      'www-authenticate': `Bearer resource_metadata="${PROTECTED_RESOURCE_METADATA_URL}"`,
+      'www-authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(origin)}"`,
     },
   });
 }
@@ -125,12 +126,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const authHeader = request.headers.get('authorization') ?? '';
   const match = /^Bearer\s+(.+)$/.exec(authHeader);
-  if (!match) return unauthorizedResponse('unauthorized');
+  if (!match) return unauthorizedResponse(request, 'unauthorized');
 
   const tokenRecord = await validateAccessToken(env.CONTACTS_DB, match[1]);
-  if (!tokenRecord) return unauthorizedResponse('unauthorized');
-  if (tokenRecord.resource && tokenRecord.resource !== MCP_RESOURCE) {
-    return unauthorizedResponse('invalid_token_audience');
+  if (!tokenRecord) return unauthorizedResponse(request, 'unauthorized');
+  const expectedResource = mcpResource(issuerFromRequest(request));
+  if (tokenRecord.resource && tokenRecord.resource !== expectedResource) {
+    return unauthorizedResponse(request, 'invalid_token_audience');
   }
 
   let body: JsonRpcRequest;

@@ -1,7 +1,7 @@
 import type { Env } from '../_lib/types';
 import { timingSafeEqual } from '../_lib/auth';
 import { checkOAuthLoginRateLimit } from '../_lib/ratelimit';
-import { createAuthCode, escapeHtml, getClient, isValidRedirectUri, MCP_RESOURCE } from '../_lib/oauth';
+import { createAuthCode, escapeHtml, getClient, isValidRedirectUri, issuerFromRequest, mcpResource } from '../_lib/oauth';
 
 interface AuthorizeParams {
   responseType: string | null;
@@ -75,11 +75,20 @@ function renderLoginForm(params: AuthorizeParams, clientName: string | null, err
 </html>`;
 }
 
-function redirectWithError(redirectUri: string, state: string | null, error: string, description?: string): Response {
+// RFC 9207: authorization_response_iss_parameter_supported=true を広告しているため、
+// 成功・エラーを問わず全てのリダイレクトに iss を付与する（mix-up攻撃対策）。
+function redirectWithError(
+  origin: string,
+  redirectUri: string,
+  state: string | null,
+  error: string,
+  description?: string
+): Response {
   const url = new URL(redirectUri);
   url.searchParams.set('error', error);
   if (description) url.searchParams.set('error_description', description);
   if (state) url.searchParams.set('state', state);
+  url.searchParams.set('iss', origin);
   return new Response(null, { status: 302, headers: { location: url.toString() } });
 }
 
@@ -101,22 +110,23 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
   const params = parseParams(url);
+  const origin = issuerFromRequest(request);
 
   const { client, error } = await validateAndGetClient(env, params);
   if (error) return error;
 
   // client_id/redirect_uriの検証後に判明するエラーは、以後 redirect_uri 側へ返す。
   if (params.responseType !== 'code') {
-    return redirectWithError(params.redirectUri!, params.state, 'unsupported_response_type');
+    return redirectWithError(origin, params.redirectUri!, params.state, 'unsupported_response_type');
   }
   if (!params.codeChallenge || params.codeChallengeMethod !== 'S256') {
-    return redirectWithError(params.redirectUri!, params.state, 'invalid_request', 'PKCE (S256) is required');
+    return redirectWithError(origin, params.redirectUri!, params.state, 'invalid_request', 'PKCE (S256) is required');
   }
   if (!params.state) {
-    return redirectWithError(params.redirectUri!, params.state, 'invalid_request', 'state is required');
+    return redirectWithError(origin, params.redirectUri!, params.state, 'invalid_request', 'state is required');
   }
-  if (params.resource && params.resource !== MCP_RESOURCE) {
-    return redirectWithError(params.redirectUri!, params.state, 'invalid_target');
+  if (params.resource && params.resource !== mcpResource(origin)) {
+    return redirectWithError(origin, params.redirectUri!, params.state, 'invalid_target');
   }
 
   return htmlResponse(renderLoginForm(params, client!.client_name));
@@ -124,6 +134,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
+  const origin = issuerFromRequest(request);
 
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
   const rateLimit = await checkOAuthLoginRateLimit(env.CONTACT_RATE_LIMIT, ip);
@@ -153,7 +164,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     params.codeChallengeMethod !== 'S256' ||
     !params.state
   ) {
-    return redirectWithError(params.redirectUri!, params.state, 'invalid_request');
+    return redirectWithError(origin, params.redirectUri!, params.state, 'invalid_request');
   }
 
   if (!env.HOBNOVA_OAUTH_OWNER_SECRET || !timingSafeEqual(ownerSecret, env.HOBNOVA_OAUTH_OWNER_SECRET)) {
@@ -172,5 +183,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const redirectUrl = new URL(params.redirectUri!);
   redirectUrl.searchParams.set('code', code);
   redirectUrl.searchParams.set('state', params.state);
+  redirectUrl.searchParams.set('iss', origin); // RFC 9207
   return new Response(null, { status: 302, headers: { location: redirectUrl.toString() } });
 };
