@@ -17,7 +17,7 @@ export const GTM_ID = 'GTM-T3RWG7HD';
 
 // Cloudflare Turnstile のサイトキー（公開情報。secret keyとは異なりクライアント側に埋め込んでよい）。
 // Cloudflareダッシュボードでウィジェット作成後に実値へ差し替える。手順は docs/contact-setup.md 参照。
-export const TURNSTILE_SITE_KEY = 'REPLACE_WITH_TURNSTILE_SITE_KEY';
+export const TURNSTILE_SITE_KEY = '0x4AAAAAAFJP-i81sub8k7xp';
 
 export type CategoryId = 'camp' | 'gadget' | 'data-lab' | 'marketing' | 'tools';
 
