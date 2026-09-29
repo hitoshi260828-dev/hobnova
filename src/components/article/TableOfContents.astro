@@ -17,8 +17,8 @@ const isLong = items.length > collapseAfter;
 
 {
   items.length > 0 && (
-    <nav aria-label="目次" class="toc mx-3 overflow-hidden border-y border-border bg-white sm:mx-5 lg:mx-0">
-      <div class="flex items-center justify-between py-4">
+    <nav aria-label="目次" class="toc mx-1 overflow-hidden border-y border-border bg-white sm:mx-2 lg:mx-0">
+      <div class="flex items-center justify-between px-4 py-4 sm:px-5">
         <p class="m-0 text-base font-bold tracking-wide text-navy">目次</p>
         <span class="text-[10px] font-semibold tracking-[0.18em] text-charcoal/40">CONTENTS</span>
       </div>
@@ -35,7 +35,7 @@ const isLong = items.length > collapseAfter;
             <a
               href={`#${h.slug}`}
               class:list={[
-                'group flex items-start gap-3 py-3 no-underline transition-colors hover:text-accent',
+                'group flex items-start gap-3 px-4 py-3 no-underline transition-colors hover:text-accent sm:px-5',
                 h.depth === 2 ? 'text-charcoal' : 'pl-4 font-normal text-charcoal/65',
               ]}
             >
@@ -48,7 +48,7 @@ const isLong = items.length > collapseAfter;
       {isLong && (
         <button
           type="button"
-          class="toc-toggle flex w-full items-center justify-center gap-2 border-t border-border py-3 text-xs font-semibold text-charcoal transition-colors hover:text-accent"
+          class="toc-toggle flex w-full items-center justify-center gap-2 border-t border-border px-4 py-3 text-xs font-semibold text-charcoal transition-colors hover:text-accent sm:px-5"
           aria-expanded="false"
         >
           <span class="toc-toggle-label">目次をすべて表示</span>
