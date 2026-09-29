@@ -6,14 +6,17 @@ const { productId } = Astro.props;
 const product = getProjector(productId);
 if (!product) throw new Error(`Unknown projector: ${productId}`);
 
+const AMAZON_TRACKING_ID = '37266435-22';
 const yen = new Intl.NumberFormat('ja-JP').format(product.price);
 const unit = Math.round(pricePerLumen(product));
-const rakutenUrl = product.rakutenKeyword
-  ? `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(product.rakutenKeyword)}/`
-  : undefined;
+
 const amazonUrl = product.amazonAsin
-  ? `https://www.amazon.co.jp/dp/${product.amazonAsin}`
+  ? `https://www.amazon.co.jp/dp/${encodeURIComponent(product.amazonAsin)}?tag=${AMAZON_TRACKING_ID}`
   : undefined;
+
+// 楽天は公式リンク作成画面で計測IDを設定して発行したURLをそのまま保存・利用する。
+// ガイドライン上、生成済みアフィリエイトURLのパラメータをコード側で改変しない。
+const rakutenUrl = product.rakutenAffiliateUrl;
 ---
 <div class="not-prose my-8 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
   <div class="grid gap-5 p-5 sm:grid-cols-[9rem_1fr]">
