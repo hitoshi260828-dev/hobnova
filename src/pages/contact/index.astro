@@ -1,0 +1,206 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumb from '../../components/layout/Breadcrumb.astro';
+import { TURNSTILE_SITE_KEY } from '../../consts';
+
+const CONTACT_TYPES = [
+  { value: 'advertising', label: '広告掲載' },
+  { value: 'tieup', label: '記事タイアップ' },
+  { value: 'product', label: '商品・サービス紹介' },
+  { value: 'review', label: 'レビュー・比較企画' },
+  { value: 'other', label: 'その他' },
+];
+
+const BUDGET_OPTIONS = [
+  { value: '', label: '未選択' },
+  { value: 'under-50000', label: '〜5万円' },
+  { value: '50000-100000', label: '5〜10万円' },
+  { value: '100000-300000', label: '10〜30万円' },
+  { value: 'over-300000', label: '30万円以上' },
+  { value: 'undecided', label: '未定' },
+];
+---
+
+<BaseLayout
+  title="広告掲載・タイアップ・案件のお問い合わせ"
+  description="HOBNOVAでは広告掲載、記事タイアップ、商品・サービス紹介、比較企画などのご相談を受け付けています。"
+>
+  <Fragment slot="head-extra">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  </Fragment>
+
+  <Breadcrumb items={[{ label: 'CONTACT' }]} />
+
+  <div class="mx-auto max-w-2xl px-4 pb-16 sm:px-6">
+    <header class="text-center">
+      <h1 class="text-2xl font-bold text-navy sm:text-3xl">広告掲載・タイアップ・案件のお問い合わせ</h1>
+      <p class="mt-3 text-sm leading-relaxed text-charcoal/70">
+        HOBNOVAでは広告掲載、記事タイアップ、商品・サービス紹介、比較企画などのご相談を受け付けています。
+      </p>
+    </header>
+
+    <form id="contact-form" class="mt-10 space-y-6" novalidate>
+      <!-- Honeypot: 通常ユーザーには見えない入力欄。BOTが埋めた場合はサーバー側で静かに破棄する。 -->
+      <div class="hidden" aria-hidden="true">
+        <label for="website_confirm">これは入力しないでください</label>
+        <input type="text" id="website_confirm" name="website_confirm" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div>
+        <span class="text-sm font-semibold text-navy">問い合わせ種別 <span class="text-red-600">*</span></span>
+        <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {CONTACT_TYPES.map((t, i) => (
+            <label class="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-charcoal has-[:checked]:border-accent has-[:checked]:bg-accent/5">
+              <input type="radio" name="type" value={t.value} required checked={i === 0} class="h-4 w-4 text-accent focus-visible:ring-accent" />
+              {t.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label for="company" class="text-sm font-semibold text-navy">会社名 / 団体名</label>
+        <input id="company" name="company" type="text" maxlength="150"
+          class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </div>
+
+      <div>
+        <label for="name" class="text-sm font-semibold text-navy">担当者名 <span class="text-red-600">*</span></label>
+        <input id="name" name="name" type="text" required maxlength="100"
+          class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </div>
+
+      <div>
+        <label for="website" class="text-sm font-semibold text-navy">WebサイトURL</label>
+        <input id="website" name="website" type="url" placeholder="https://"
+          class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </div>
+
+      <div>
+        <label for="email" class="text-sm font-semibold text-navy">返信用メールアドレス <span class="text-red-600">*</span></label>
+        <input id="email" name="email" type="email" required maxlength="254"
+          class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent" />
+      </div>
+
+      <div>
+        <label for="budget" class="text-sm font-semibold text-navy">予算感</label>
+        <select id="budget" name="budget"
+          class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent">
+          {BUDGET_OPTIONS.map((b) => <option value={b.value}>{b.label}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label for="message" class="text-sm font-semibold text-navy">問い合わせ本文 <span class="text-red-600">*</span></label>
+        <textarea id="message" name="message" rows="6" required minlength="20" maxlength="5000"
+          class="mt-1 w-full rounded-md border border-border px-3 py-2 text-navy focus-visible:border-accent"></textarea>
+        <p class="mt-1 text-xs text-charcoal/50">20〜5000文字。<span id="message-count">0</span> / 5000</p>
+      </div>
+
+      <div class="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-theme="light"></div>
+
+      <label class="flex items-start gap-2 text-sm text-charcoal/80">
+        <input type="checkbox" id="privacyAccepted" name="privacyAccepted" required class="mt-0.5 h-4 w-4 text-accent focus-visible:ring-accent" />
+        <span>
+          <a href="/privacy/" target="_blank" rel="noopener noreferrer" class="text-accent underline">プライバシーポリシー</a>
+          に同意する <span class="text-red-600">*</span>
+        </span>
+      </label>
+
+      <div id="form-message" class="hidden rounded-md p-3 text-sm" role="status" aria-live="polite"></div>
+
+      <button id="submit-button" type="submit"
+        class="w-full rounded-md bg-navy px-4 py-3 text-sm font-bold text-white transition hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50">
+        問い合わせを送信
+      </button>
+    </form>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
+  const messageEl = document.getElementById('form-message') as HTMLDivElement;
+  const messageTextarea = document.getElementById('message') as HTMLTextAreaElement;
+  const messageCount = document.getElementById('message-count') as HTMLSpanElement;
+
+  messageTextarea?.addEventListener('input', () => {
+    if (messageCount) messageCount.textContent = String(messageTextarea.value.length);
+  });
+
+  function showMessage(text: string, tone: 'success' | 'error') {
+    if (!messageEl) return;
+    messageEl.textContent = text;
+    messageEl.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700');
+    if (tone === 'success') {
+      messageEl.classList.add('bg-green-50', 'text-green-700');
+    } else {
+      messageEl.classList.add('bg-red-50', 'text-red-700');
+    }
+  }
+
+  function resetTurnstile() {
+    const w = window as unknown as { turnstile?: { reset: () => void } };
+    w.turnstile?.reset();
+  }
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (submitButton.disabled) return; // 二重クリック防止
+
+    submitButton.disabled = true;
+    submitButton.textContent = '送信中...';
+
+    const formData = new FormData(form);
+    const payload = {
+      type: formData.get('type'),
+      company: formData.get('company') || null,
+      name: formData.get('name'),
+      website: formData.get('website') || null,
+      email: formData.get('email'),
+      budget: formData.get('budget') || null,
+      message: formData.get('message'),
+      privacyAccepted: formData.get('privacyAccepted') === 'on',
+      website_confirm: formData.get('website_confirm') || '',
+      turnstileToken: formData.get('cf-turnstile-response') || '',
+    };
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        showMessage('お問い合わせありがとうございます。内容を確認後、必要に応じてご連絡いたします。', 'success');
+        form.reset();
+        if (messageCount) messageCount.textContent = '0';
+        submitButton.textContent = '送信済み';
+        return;
+      }
+
+      if (res.status === 429) {
+        showMessage('送信回数が多すぎます。しばらく時間をおいて再度お試しください。', 'error');
+      } else if (res.status === 400 || res.status === 415 || res.status === 413) {
+        const data = await res.json().catch(() => ({}));
+        if (data.error === 'turnstile_failed') {
+          showMessage('ロボット確認に失敗しました。もう一度お試しください。', 'error');
+        } else {
+          showMessage('入力内容に誤りがあります。各項目をご確認ください。', 'error');
+        }
+      } else {
+        showMessage('送信に失敗しました。時間をおいて再度お試しください。', 'error');
+      }
+      resetTurnstile();
+    } catch {
+      showMessage('通信エラーが発生しました。時間をおいて再度お試しください。', 'error');
+      resetTurnstile();
+    } finally {
+      if (submitButton.textContent !== '送信済み') {
+        submitButton.disabled = false;
+        submitButton.textContent = '問い合わせを送信';
+      }
+    }
+  });
+</script>

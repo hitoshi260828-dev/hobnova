@@ -1,0 +1,30 @@
+# Cloudflare Pages Functions のローカル開発専用設定。
+#
+# 重要: `pages_build_output_dir` は意図的に設定していない。これを設定すると
+# このファイルがCloudflare Pages Git連携の本番/プレビュービルドの構成ソースとして
+# 扱われ、ここに書いたプレースホルダーのD1/KV IDがそのままデプロイ時の検証対象になり、
+# 実リソース作成前にデプロイ全体（このサイト全体の本番デプロイを含む）が失敗する。
+# そのため本番の binding（D1 / KV / Secret）は Cloudflare ダッシュボード側の
+# Pages プロジェクト設定（Settings > Functions / Settings > Environment variables）
+# で別途設定する（詳細手順は docs/contact-setup.md）。このファイルは
+# `wrangler pages dev` / `wrangler d1 execute --local` などローカル検証専用。
+name = "hobnova"
+compatibility_date = "2026-09-01"
+
+# 問い合わせデータを保存する D1 データベース。
+# 本番作成: `wrangler d1 create hobnova_contacts` 実行後、
+# 表示された database_id をここと Cloudflare ダッシュボードの両方に設定する。
+[[d1_databases]]
+binding = "CONTACTS_DB"
+database_name = "hobnova_contacts"
+database_id = "6e13fa3b-35db-4ca9-9485-d20415754b9b"
+
+# POST /api/contact のレート制限カウンタ保存用 KV。
+# 本番作成: `wrangler kv namespace create CONTACT_RATE_LIMIT`
+[[kv_namespaces]]
+binding = "CONTACT_RATE_LIMIT"
+id = "f845708378c24245bb866c7189d0b81e"
+
+# Secret（TURNSTILE_SECRET_KEY, HOBNOVA_CONTACT_API_TOKEN）は
+# wrangler.toml に書かない。ローカル検証時は `.dev.vars`（.gitignore 済み）、
+# 本番は Cloudflare ダッシュボードの Environment variables (Secret) で設定する。
