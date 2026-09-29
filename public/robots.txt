@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hobnova.jp/sitemap-index.xml
