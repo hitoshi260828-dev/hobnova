@@ -13,6 +13,7 @@ const { headings } = Astro.props;
 const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const collapseAfter = 7;
 const isLong = items.length > collapseAfter;
+const hasChild = (index: number) => items[index]?.depth === 2 && items[index + 1]?.depth === 3;
 ---
 
 {
@@ -27,8 +28,9 @@ const isLong = items.length > collapseAfter;
         {items.map((h, index) => (
           <li
             class:list={[
-              'toc-item m-0 border-b border-border/70 p-0 last:border-b-0',
+              'toc-item m-0 p-0',
               h.depth === 3 && 'toc-sub',
+              hasChild(index) && 'toc-has-child',
               index >= collapseAfter && 'toc-extra',
             ]}
           >
@@ -39,7 +41,7 @@ const isLong = items.length > collapseAfter;
                 h.depth === 2 ? 'text-charcoal' : 'pl-4 font-normal text-charcoal/65',
               ]}
             >
-              <span class:list={['leading-relaxed', h.depth === 2 ? 'text-sm font-semibold' : 'text-xs font-normal']}>{h.text}</span>
+              <span class:list={['toc-label block w-full border-b border-border/70 pb-3 leading-relaxed', h.depth === 2 ? 'text-sm font-semibold' : 'text-xs font-normal']}>{h.text}</span>
             </a>
           </li>
         ))}
@@ -79,4 +81,6 @@ const isLong = items.length > collapseAfter;
 
 <style>
   .toc-list.toc-collapsed .toc-extra { display: none; }
+  .toc-item.toc-has-child .toc-label { border-bottom-color: transparent; }
+  .toc-item:last-child .toc-label { border-bottom-color: transparent; }
 </style>
