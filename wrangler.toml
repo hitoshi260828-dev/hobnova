@@ -17,7 +17,7 @@ compatibility_date = "2026-09-01"
 [[d1_databases]]
 binding = "CONTACTS_DB"
 database_name = "hobnova_contacts"
-database_id = "REPLACE_WITH_ACTUAL_D1_DATABASE_ID"
+database_id = "6e13fa3b-35db-4ca9-9485-d20415754b9b"
 
 # POST /api/contact のレート制限カウンタ保存用 KV。
 # 本番作成: `wrangler kv namespace create CONTACT_RATE_LIMIT`
