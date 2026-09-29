@@ -15,6 +15,10 @@ export const DEFAULT_OG_IMAGE = '/og-default.png';
 // Google Tag Manager コンテナID。全ページ共通でBaseLayout.astroから読み込む。
 export const GTM_ID = 'GTM-T3RWG7HD';
 
+// Cloudflare Turnstile のサイトキー（公開情報。secret keyとは異なりクライアント側に埋め込んでよい）。
+// Cloudflareダッシュボードでウィジェット作成後に実値へ差し替える。手順は docs/contact-setup.md 参照。
+export const TURNSTILE_SITE_KEY = 'REPLACE_WITH_TURNSTILE_SITE_KEY';
+
 export type CategoryId = 'camp' | 'gadget' | 'data-lab' | 'marketing' | 'tools';
 
 // 通常記事（Content Collections の articles）が対応するカテゴリ。
@@ -89,5 +93,6 @@ export const HEADER_NAV: NavLink[] = [
 export const FOOTER_NAV: NavLink[] = [
   ...CATEGORIES.map((c) => ({ labelEn: c.navLabelEn, labelJa: c.labelJa, href: c.href })),
   { labelEn: 'ABOUT', labelJa: 'サイトについて', href: '/about/' },
+  { labelEn: 'CONTACT', labelJa: 'お問い合わせ', href: '/contact/' },
   { labelEn: 'PRIVACY', labelJa: 'プライバシーポリシー', href: '/privacy/' },
 ];

@@ -1,0 +1,29 @@
+# Cloudflare Pages Functions の設定。
+#
+# このプロジェクトは Cloudflare Pages の Git 連携でデプロイしており、
+# 本番の binding（D1 / KV / Secret）は Cloudflare ダッシュボード側の
+# Pages プロジェクト設定（Settings > Functions / Settings > Environment variables）
+# で別途設定する必要がある。このファイルはローカルでの `wrangler pages dev`
+# 実行時の binding 定義、および構成のドキュメントとしての役割を持つ。
+# 詳細な手順は docs/contact-setup.md を参照。
+name = "hobnova"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-01"
+
+# 問い合わせデータを保存する D1 データベース。
+# 本番作成: `wrangler d1 create hobnova_contacts` 実行後、
+# 表示された database_id をここと Cloudflare ダッシュボードの両方に設定する。
+[[d1_databases]]
+binding = "CONTACTS_DB"
+database_name = "hobnova_contacts"
+database_id = "REPLACE_WITH_ACTUAL_D1_DATABASE_ID"
+
+# POST /api/contact のレート制限カウンタ保存用 KV。
+# 本番作成: `wrangler kv namespace create CONTACT_RATE_LIMIT`
+[[kv_namespaces]]
+binding = "CONTACT_RATE_LIMIT"
+id = "REPLACE_WITH_ACTUAL_KV_NAMESPACE_ID"
+
+# Secret（TURNSTILE_SECRET_KEY, HOBNOVA_CONTACT_API_TOKEN）は
+# wrangler.toml に書かない。ローカル検証時は `.dev.vars`（.gitignore 済み）、
+# 本番は Cloudflare ダッシュボードの Environment variables (Secret) で設定する。
