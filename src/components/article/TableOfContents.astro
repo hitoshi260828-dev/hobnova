@@ -1,6 +1,4 @@
 ---
-// astro:content の render() が返す headings（remark-toc相当）をそのまま使う。
-// H2/H3のみを目次対象とする。
 interface Heading {
   depth: number;
   slug: string;
@@ -13,21 +11,75 @@ interface Props {
 
 const { headings } = Astro.props;
 const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const collapseAfter = 7;
+const isLong = items.length > collapseAfter;
 ---
 
 {
   items.length > 0 && (
-    <nav aria-label="目次" class="rounded-xl border border-border bg-white p-5">
-      <p class="text-xs font-semibold tracking-wide text-charcoal/60">目次</p>
-      <ol class="mt-3 space-y-2 text-sm">
-        {items.map((h) => (
-          <li class:list={[h.depth === 3 && 'pl-4']}>
-            <a href={`#${h.slug}`} class="text-charcoal/80 hover:text-accent">
-              {h.text}
+    <nav aria-label="目次" class="toc overflow-hidden border-y border-border bg-white">
+      <div class="flex items-center justify-between py-4">
+        <p class="m-0 text-lg font-bold tracking-wide text-navy">目次</p>
+        <span class="text-[10px] font-semibold tracking-[0.18em] text-charcoal/40">CONTENTS</span>
+      </div>
+
+      <ol class:list={['toc-list m-0 list-none space-y-0 border-t border-border p-0', isLong && 'toc-collapsed']}>
+        {items.map((h, index) => (
+          <li
+            class:list={[
+              'toc-item m-0 border-b border-border/70 p-0 last:border-b-0',
+              h.depth === 3 && 'toc-sub',
+              index >= collapseAfter && 'toc-extra',
+            ]}
+          >
+            <a
+              href={`#${h.slug}`}
+              class:list={[
+                'group flex items-start gap-3 py-3.5 no-underline transition-colors hover:text-accent',
+                h.depth === 2 ? 'font-semibold text-charcoal' : 'pl-5 text-[13px] text-charcoal/70',
+              ]}
+            >
+              <span class="mt-[0.15em] shrink-0 text-xs font-bold text-accent/70">
+                {h.depth === 2 ? String(items.slice(0, index + 1).filter((x) => x.depth === 2).length).padStart(2, '0') : '—'}
+              </span>
+              <span class="leading-relaxed">{h.text}</span>
             </a>
           </li>
         ))}
       </ol>
+
+      {isLong && (
+        <button
+          type="button"
+          class="toc-toggle flex w-full items-center justify-center gap-2 border-t border-border py-3.5 text-sm font-semibold text-charcoal transition-colors hover:text-accent"
+          aria-expanded="false"
+        >
+          <span class="toc-toggle-label">目次をすべて表示</span>
+          <span class="toc-toggle-icon text-lg leading-none" aria-hidden="true">＋</span>
+        </button>
+      )}
     </nav>
   )
 }
+
+<script>
+  document.querySelectorAll<HTMLElement>('.toc').forEach((toc) => {
+    const button = toc.querySelector<HTMLButtonElement>('.toc-toggle');
+    const list = toc.querySelector<HTMLOListElement>('.toc-list');
+    const label = toc.querySelector<HTMLElement>('.toc-toggle-label');
+    const icon = toc.querySelector<HTMLElement>('.toc-toggle-icon');
+    if (!button || !list || !label || !icon) return;
+
+    button.addEventListener('click', () => {
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      list.classList.toggle('toc-collapsed', expanded);
+      label.textContent = expanded ? '目次をすべて表示' : '閉じる';
+      icon.textContent = expanded ? '＋' : '−';
+    });
+  });
+</script>
+
+<style>
+  .toc-list.toc-collapsed .toc-extra { display: none; }
+</style>
