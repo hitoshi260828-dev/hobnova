@@ -1,13 +1,14 @@
-# Cloudflare Pages Functions の設定。
+# Cloudflare Pages Functions のローカル開発専用設定。
 #
-# このプロジェクトは Cloudflare Pages の Git 連携でデプロイしており、
-# 本番の binding（D1 / KV / Secret）は Cloudflare ダッシュボード側の
+# 重要: `pages_build_output_dir` は意図的に設定していない。これを設定すると
+# このファイルがCloudflare Pages Git連携の本番/プレビュービルドの構成ソースとして
+# 扱われ、ここに書いたプレースホルダーのD1/KV IDがそのままデプロイ時の検証対象になり、
+# 実リソース作成前にデプロイ全体（このサイト全体の本番デプロイを含む）が失敗する。
+# そのため本番の binding（D1 / KV / Secret）は Cloudflare ダッシュボード側の
 # Pages プロジェクト設定（Settings > Functions / Settings > Environment variables）
-# で別途設定する必要がある。このファイルはローカルでの `wrangler pages dev`
-# 実行時の binding 定義、および構成のドキュメントとしての役割を持つ。
-# 詳細な手順は docs/contact-setup.md を参照。
+# で別途設定する（詳細手順は docs/contact-setup.md）。このファイルは
+# `wrangler pages dev` / `wrangler d1 execute --local` などローカル検証専用。
 name = "hobnova"
-pages_build_output_dir = "dist"
 compatibility_date = "2026-09-01"
 
 # 問い合わせデータを保存する D1 データベース。
