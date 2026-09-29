@@ -6,7 +6,7 @@ export const SITE_TAGLINE = '好奇心から、新しい発見を。';
 export const SITE_DESCRIPTION =
   'HOBNOVA（ホブノヴァ）は、キャンプ・ガジェット・データ分析・デジタルマーケティング・Webツールなど、大人の好奇心を研究する個人メディアです。「試す」「調べる」「分析する」を通じて新しい発見を届けます。';
 // TODO: ドメイン確定後に実URLへ変更（astro.config.mjs の site とも合わせる）
-export const SITE_URL = 'https://hobnova.com';
+export const SITE_URL = 'https://hobnova.jp';
 export const ORG_NAME = 'HOBNOVA';
 export const DEFAULT_AUTHOR = 'HOBNOVA編集部';
 // TODO: 1200x630のOGP用画像を public/og-default.png に配置する
