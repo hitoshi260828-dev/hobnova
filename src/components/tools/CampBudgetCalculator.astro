@@ -1,127 +1,163 @@
 ---
-// キャンプギア予算計算機。チェックしたギアの合計金額をカテゴリ別・総額で集計する。
 interface Item {
+  id: string;
   name: string;
-  price: number;
+  estimatePrice: number;
+  amazonQuery: string;
 }
-
-interface Group {
-  category: string;
-  items: Item[];
-}
+interface Group { category: string; items: Item[]; }
 
 const groups: Group[] = [
-  {
-    category: 'テント・タープ',
-    items: [
-      { name: 'ソロテント', price: 15000 },
-      { name: 'ファミリーテント', price: 35000 },
-      { name: 'タープ', price: 12000 },
-    ],
-  },
-  {
-    category: '寝具',
-    items: [
-      { name: '寝袋（シュラフ）', price: 8000 },
-      { name: 'マット', price: 5000 },
-      { name: 'コット', price: 9000 },
-    ],
-  },
-  {
-    category: '火まわり・調理',
-    items: [
-      { name: 'バーナー', price: 6000 },
-      { name: 'クッカーセット', price: 4000 },
-      { name: 'クーラーボックス', price: 7000 },
-    ],
-  },
-  {
-    category: '家具・収納',
-    items: [
-      { name: 'チェア', price: 5000 },
-      { name: 'テーブル', price: 4000 },
-      { name: 'コンテナボックス', price: 3000 },
-    ],
-  },
-  {
-    category: '照明・電源',
-    items: [
-      { name: 'ランタン', price: 4000 },
-      { name: 'ポータブル電源', price: 20000 },
-    ],
-  },
+  { category: 'テント・タープ', items: [
+    { id:'solo-tent', name:'ソロテント', estimatePrice:15000, amazonQuery:'ソロテント キャンプ' },
+    { id:'family-tent', name:'ファミリーテント', estimatePrice:35000, amazonQuery:'ファミリーテント キャンプ' },
+    { id:'tarp', name:'タープ', estimatePrice:12000, amazonQuery:'タープ キャンプ' },
+  ]},
+  { category: '寝具', items: [
+    { id:'sleeping-bag', name:'寝袋（シュラフ）', estimatePrice:8000, amazonQuery:'寝袋 シュラフ キャンプ' },
+    { id:'mat', name:'マット', estimatePrice:5000, amazonQuery:'キャンプ マット' },
+    { id:'cot', name:'コット', estimatePrice:9000, amazonQuery:'キャンプ コット' },
+  ]},
+  { category: '火まわり・調理', items: [
+    { id:'burner', name:'バーナー', estimatePrice:6000, amazonQuery:'キャンプ バーナー' },
+    { id:'cooker', name:'クッカーセット', estimatePrice:4000, amazonQuery:'キャンプ クッカーセット' },
+    { id:'cooler', name:'クーラーボックス', estimatePrice:7000, amazonQuery:'キャンプ クーラーボックス' },
+  ]},
+  { category: '家具・収納', items: [
+    { id:'chair', name:'チェア', estimatePrice:5000, amazonQuery:'キャンプ チェア' },
+    { id:'table', name:'テーブル', estimatePrice:4000, amazonQuery:'キャンプ テーブル' },
+    { id:'container', name:'コンテナボックス', estimatePrice:3000, amazonQuery:'キャンプ コンテナボックス' },
+  ]},
+  { category: '照明・電源', items: [
+    { id:'lantern', name:'ランタン', estimatePrice:4000, amazonQuery:'キャンプ LED ランタン' },
+    { id:'power-station', name:'ポータブル電源', estimatePrice:20000, amazonQuery:'ポータブル電源 キャンプ' },
+  ]},
 ];
+
+const flatItems = groups.flatMap((group) => group.items.map((item) => ({ ...item, category: group.category })));
 ---
 
-<div class="rounded-xl border border-border bg-white p-5 sm:p-6">
+<div class="rounded-xl border border-border bg-white p-5 sm:p-6" id="camp-budget-calculator">
   <div class="grid gap-6 sm:grid-cols-2">
-    {
-      groups.map((group) => (
-        <fieldset class="cgb-group" data-group={group.category}>
-          <legend class="text-sm font-semibold text-navy">{group.category}</legend>
-          <div class="mt-2 space-y-2">
-            {group.items.map((item) => (
-              <label class="flex items-center justify-between gap-3 text-sm text-charcoal/80">
-                <span class="flex items-center gap-2">
-                  <input type="checkbox" class="cgb-item h-4 w-4 rounded border-border text-accent focus-visible:ring-accent" data-price={item.price} data-group={group.category} />
-                  {item.name}
-                </span>
-                <span class="text-charcoal/50">¥{item.price.toLocaleString('ja-JP')}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ))
-    }
+    {groups.map((group) => (
+      <fieldset class="cgb-group" data-group={group.category}>
+        <legend class="text-sm font-semibold text-navy">{group.category}</legend>
+        <div class="mt-2 space-y-2">
+          {group.items.map((item) => (
+            <label class="flex items-center justify-between gap-3 text-sm text-charcoal/80">
+              <span class="flex items-center gap-2">
+                <input type="checkbox" class="cgb-item h-4 w-4 rounded border-border text-accent focus-visible:ring-accent"
+                  data-id={item.id} data-price={item.estimatePrice} data-group={group.category} />
+                {item.name}
+              </span>
+              <span class="text-charcoal/50">概算 ¥{item.estimatePrice.toLocaleString('ja-JP')}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    ))}
+  </div>
+
+  <div id="cgb-products" class="mt-8 hidden border-t border-border pt-6">
+    <div class="flex items-end justify-between gap-3">
+      <div>
+        <p class="text-xs font-semibold tracking-wide text-charcoal/60">商品を選ぶ</p>
+        <p class="mt-1 text-xs text-charcoal/50">Amazon連携後は、チェックしたギアごとに候補商品を最大5件表示し、選択した実売価格を合計へ反映します。</p>
+      </div>
+    </div>
+    <div id="cgb-product-list" class="mt-4 space-y-3"></div>
   </div>
 
   <div class="mt-8 border-t border-border pt-6">
     <p class="text-xs font-semibold tracking-wide text-charcoal/60">カテゴリ別内訳</p>
     <dl id="cgb-breakdown" class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {
-        groups.map((group) => (
-          <div class="rounded-lg bg-bg-light p-3" data-breakdown={group.category}>
-            <dt class="text-[11px] text-charcoal/50">{group.category}</dt>
-            <dd class="mt-0.5 text-sm font-semibold text-navy">¥0</dd>
-          </div>
-        ))
-      }
+      {groups.map((group) => (
+        <div class="rounded-lg bg-bg-light p-3" data-breakdown={group.category}>
+          <dt class="text-[11px] text-charcoal/50">{group.category}</dt>
+          <dd class="mt-0.5 text-sm font-semibold text-navy">¥0</dd>
+        </div>
+      ))}
     </dl>
-
     <div class="mt-5 rounded-lg bg-accent/10 p-4">
-      <p class="text-[11px] text-charcoal/50">合計予算</p>
+      <p class="text-[11px] text-charcoal/50">選択中の合計予算</p>
       <p id="cgb-total" class="mt-1 text-xl font-bold text-navy">¥0</p>
+      <p id="cgb-price-note" class="mt-1 text-[11px] text-charcoal/50">現在は概算価格で計算しています。</p>
     </div>
   </div>
 </div>
 
-<script>
-  const checkboxes = document.querySelectorAll<HTMLInputElement>('.cgb-item');
+<script define:vars={{ flatItems }}>
+  const AMAZON_TRACKING_ID = '37266435-22';
+  const items = flatItems;
+  const checkboxes = document.querySelectorAll('.cgb-item');
   const totalEl = document.getElementById('cgb-total');
+  const productsEl = document.getElementById('cgb-products');
+  const productListEl = document.getElementById('cgb-product-list');
+  const noteEl = document.getElementById('cgb-price-note');
+  const selectedProducts = new Map();
 
-  const yen = (n: number) => `¥${Math.round(n).toLocaleString('ja-JP')}`;
+  const yen = (n) => `¥${Math.round(n).toLocaleString('ja-JP')}`;
+  const amazonSearchUrl = (query) =>
+    `https://www.amazon.co.jp/s?k=${encodeURIComponent(query)}&tag=${AMAZON_TRACKING_ID}`;
+
+  function renderProductSelectors() {
+    const checkedIds = [...checkboxes].filter((cb) => cb.checked).map((cb) => cb.dataset.id);
+    if (!productListEl || !productsEl) return;
+    productsEl.classList.toggle('hidden', checkedIds.length === 0);
+
+    productListEl.innerHTML = checkedIds.map((id) => {
+      const item = items.find((x) => x.id === id);
+      if (!item) return '';
+      const chosen = selectedProducts.get(id);
+      return `
+        <section class="rounded-xl border border-border bg-bg-light p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-navy">${item.name}</p>
+              <p class="mt-1 text-xs text-charcoal/50">${chosen ? `選択商品: ${chosen.title} / ${yen(chosen.price)}` : `現在は概算 ${yen(item.estimatePrice)}`}</p>
+            </div>
+            <a href="${amazonSearchUrl(item.amazonQuery)}" target="_blank" rel="sponsored noopener noreferrer"
+              class="rounded-lg bg-neutral-900 px-3 py-2 text-xs font-bold text-white no-underline">Amazonで商品を見る</a>
+          </div>
+          <div class="mt-3 rounded-lg border border-dashed border-border bg-white p-3 text-xs text-charcoal/50">
+            Creators API利用可能後：Amazonの商品候補を最大5件ここに表示 → 1商品を選択 → 実売価格を合計へ反映
+          </div>
+        </section>`;
+    }).join('');
+  }
 
   function recalc() {
-    const byGroup = new Map<string, number>();
+    const byGroup = new Map();
     let total = 0;
+    let usesLivePrice = false;
 
     checkboxes.forEach((cb) => {
       if (!cb.checked) return;
-      const price = Number(cb.dataset.price) || 0;
-      const group = cb.dataset.group ?? '';
-      byGroup.set(group, (byGroup.get(group) ?? 0) + price);
+      const id = cb.dataset.id || '';
+      const estimate = Number(cb.dataset.price) || 0;
+      const group = cb.dataset.group || '';
+      const selected = selectedProducts.get(id);
+      const price = selected?.price ?? estimate;
+      if (selected) usesLivePrice = true;
+      byGroup.set(group, (byGroup.get(group) || 0) + price);
       total += price;
     });
 
-    document.querySelectorAll<HTMLElement>('[data-breakdown]').forEach((el) => {
-      const group = el.dataset.breakdown ?? '';
+    document.querySelectorAll('[data-breakdown]').forEach((el) => {
+      const group = el.dataset.breakdown || '';
       const dd = el.querySelector('dd');
-      if (dd) dd.textContent = yen(byGroup.get(group) ?? 0);
+      if (dd) dd.textContent = yen(byGroup.get(group) || 0);
     });
-
     if (totalEl) totalEl.textContent = yen(total);
+    if (noteEl) noteEl.textContent = usesLivePrice
+      ? 'Amazonの商品価格と概算価格が混在しています。価格は変動する場合があります。'
+      : '現在は概算価格で計算しています。';
+    renderProductSelectors();
   }
 
-  checkboxes.forEach((cb) => cb.addEventListener('change', recalc));
+  checkboxes.forEach((cb) => cb.addEventListener('change', () => {
+    if (!cb.checked) selectedProducts.delete(cb.dataset.id || '');
+    recalc();
+  }));
   recalc();
 </script>
