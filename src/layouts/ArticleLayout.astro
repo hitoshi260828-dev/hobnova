@@ -58,6 +58,10 @@ const categoryMeta = CATEGORIES.find((c) => c.id === category);
         image={image}
       />
 
+      <div class="mx-auto mt-8 max-w-3xl lg:hidden">
+        <TableOfContents headings={headings} />
+      </div>
+
       <div class="prose prose-neutral mx-auto mt-8 max-w-3xl prose-headings:font-bold prose-headings:text-navy prose-a:text-accent prose-img:rounded-xl">
         <slot />
       </div>
