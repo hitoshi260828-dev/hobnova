@@ -11,7 +11,9 @@ export interface Projector {
   lightSource?: string;
   officialUrl: string;
   amazonAsin?: string;
-  rakutenKeyword?: string;\n  /** 楽天アフィリエイトで計測IDを設定して発行したURL。発行後のURLは改変しない。 */\n  rakutenAffiliateUrl?: string;
+  rakutenKeyword?: string;
+  /** 楽天アフィリエイトで計測IDを設定して発行したURL。発行後のURLは改変しない。 */
+  rakutenAffiliateUrl?: string;
   imageUrl?: string;
   checkedAt: string;
 }
