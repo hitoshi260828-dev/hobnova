@@ -1,7 +1,7 @@
 /**
  * タイミング攻撃を避けるための定数時間比較。
  */
-function timingSafeEqual(a: string, b: string): boolean {
+export function timingSafeEqual(a: string, b: string): boolean {
   const enc = new TextEncoder();
   const aBytes = enc.encode(a);
   const bBytes = enc.encode(b);
