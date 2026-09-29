@@ -1,0 +1,41 @@
+---
+import { getProjector, pricePerLumen } from '../../data/projectors';
+
+interface Props { productId: string; }
+const { productId } = Astro.props;
+const product = getProjector(productId);
+if (!product) throw new Error(`Unknown projector: ${productId}`);
+
+const yen = new Intl.NumberFormat('ja-JP').format(product.price);
+const unit = Math.round(pricePerLumen(product));
+const rakutenUrl = product.rakutenKeyword
+  ? `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(product.rakutenKeyword)}/`
+  : undefined;
+const amazonUrl = product.amazonAsin
+  ? `https://www.amazon.co.jp/dp/${product.amazonAsin}`
+  : undefined;
+---
+<div class="not-prose my-8 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+  <div class="grid gap-5 p-5 sm:grid-cols-[9rem_1fr]">
+    <div class="flex min-h-32 items-center justify-center rounded-xl bg-neutral-50 p-3">
+      {product.imageUrl ? <img src={product.imageUrl} alt={product.name} class="max-h-28 object-contain" loading="lazy" /> : <span class="text-center text-xs text-neutral-400">商品画像<br />アフィリエイト連携後に表示</span>}
+    </div>
+    <div>
+      <p class="mb-1 text-xs font-bold tracking-widest text-neutral-500">{product.maker}</p>
+      <h3 class="m-0 text-xl font-bold text-navy">{product.name}</h3>
+      <p class="mt-2 text-2xl font-bold">¥{yen}<span class="ml-1 text-xs font-normal text-neutral-500">参考価格</span></p>
+      <div class="mt-3 flex flex-wrap gap-2 text-xs">
+        <span class="rounded-full bg-neutral-100 px-3 py-1">{product.brightness.toLocaleString()} {product.brightnessStandard} lm</span>
+        <span class="rounded-full bg-neutral-100 px-3 py-1">{product.resolution}</span>
+        <span class="rounded-full bg-neutral-100 px-3 py-1">約{unit}円 / {product.brightnessStandard} lm</span>
+        {product.weightKg && <span class="rounded-full bg-neutral-100 px-3 py-1">{product.weightKg}kg</span>}
+      </div>
+      <div class="mt-5 flex flex-wrap gap-2">
+        <a href={product.officialUrl} target="_blank" rel="noopener noreferrer" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-bold text-neutral-800 no-underline">公式情報</a>
+        {amazonUrl && <a href={amazonUrl} target="_blank" rel="sponsored noopener noreferrer" class="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-bold text-white no-underline">Amazonで見る</a>}
+        {rakutenUrl && <a href={rakutenUrl} target="_blank" rel="sponsored noopener noreferrer" class="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-bold text-white no-underline">楽天で見る</a>}
+      </div>
+      <p class="mt-3 text-[11px] text-neutral-400">価格・仕様確認日: {product.checkedAt} / EC価格は変動する場合があります。</p>
+    </div>
+  </div>
+</div>
