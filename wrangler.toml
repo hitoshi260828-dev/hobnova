@@ -23,7 +23,7 @@ database_id = "6e13fa3b-35db-4ca9-9485-d20415754b9b"
 # 本番作成: `wrangler kv namespace create CONTACT_RATE_LIMIT`
 [[kv_namespaces]]
 binding = "CONTACT_RATE_LIMIT"
-id = "REPLACE_WITH_ACTUAL_KV_NAMESPACE_ID"
+id = "f845708378c24245bb866c7189d0b81e"
 
 # Secret（TURNSTILE_SECRET_KEY, HOBNOVA_CONTACT_API_TOKEN）は
 # wrangler.toml に書かない。ローカル検証時は `.dev.vars`（.gitignore 済み）、
