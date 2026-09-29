@@ -13,7 +13,6 @@ const { headings } = Astro.props;
 const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const collapseAfter = 7;
 const isLong = items.length > collapseAfter;
-const hasChild = (index: number) => items[index]?.depth === 2 && items[index + 1]?.depth === 3;
 ---
 
 {
@@ -30,18 +29,17 @@ const hasChild = (index: number) => items[index]?.depth === 2 && items[index + 1
             class:list={[
               'toc-item m-0 p-0',
               h.depth === 3 && 'toc-sub',
-              hasChild(index) && 'toc-has-child',
               index >= collapseAfter && 'toc-extra',
             ]}
           >
             <a
               href={`#${h.slug}`}
               class:list={[
-                'group flex items-start gap-3 px-4 py-3 no-underline transition-colors hover:text-accent sm:px-5',
+                'group flex items-start gap-3 px-4 py-2.5 no-underline transition-colors hover:text-accent sm:px-5',
                 h.depth === 2 ? 'text-charcoal' : 'pl-4 font-normal text-charcoal/65',
               ]}
             >
-              <span class:list={['toc-label block w-full border-b border-border/70 pb-3 leading-relaxed', h.depth === 2 ? 'text-sm font-semibold' : 'text-xs font-normal']}>{h.text}</span>
+              <span class:list={['toc-label block w-full leading-relaxed', h.depth === 2 ? 'text-sm font-semibold' : 'text-xs font-normal']}>{h.text}</span>
             </a>
           </li>
         ))}
@@ -81,6 +79,7 @@ const hasChild = (index: number) => items[index]?.depth === 2 && items[index + 1
 
 <style>
   .toc-list.toc-collapsed .toc-extra { display: none; }
-  .toc-item.toc-has-child .toc-label { border-bottom-color: transparent; }
-  .toc-item:last-child .toc-label { border-bottom-color: transparent; }
+  .toc-item.toc-sub { margin-left: 1rem; margin-right: 1rem; border-top: 1px solid var(--color-border); }
+  .toc-item.toc-sub + .toc-item.toc-sub { border-top: 0; }
+  .toc-item.toc-sub > a { padding-left: 0; padding-right: 0; }
 </style>
