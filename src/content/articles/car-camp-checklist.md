@@ -6,6 +6,7 @@ category: "camp"
 tags: ["車中泊", "ギア"]
 draft: false
 featured: false
+image: "./car-camp-checklist-hero.webp"
 ---
 
 車中泊キャンプはテント泊より荷物を積みやすい一方、寝床・電源・換気・防寒などを車内環境に合わせて準備する必要があります。
