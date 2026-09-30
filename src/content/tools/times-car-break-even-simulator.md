@@ -5,6 +5,7 @@ publishDate: 2026-08-29
 tags: ["タイムズカー", "カーシェア", "維持費比較"]
 draft: false
 featured: false
+image: "./times-car-break-even-simulator-hero.webp"
 toolId: "times-car-break-even"
 ---
 
