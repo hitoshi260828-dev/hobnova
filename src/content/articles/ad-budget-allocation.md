@@ -6,6 +6,7 @@ category: "marketing"
 tags: ["Web広告", "運用"]
 draft: false
 featured: false
+image: "./ad-budget-allocation-hero.svg"
 ---
 
 Web広告の予算配分には、すべての企業に当てはまる正解はありません。商材、粗利、検討期間、既存の認知、計測環境によって適切な配分が変わるためです。
