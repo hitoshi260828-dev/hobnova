@@ -6,6 +6,7 @@ category: "gadget"
 tags: ["PC", "購入ガイド"]
 draft: false
 featured: false
+image: "./laptop-buying-guide-hero.webp"
 ---
 
 ノートPCは「高性能なほど正解」ではありません。用途に対して不足すると作業が遅くなりますが、使わない性能にお金を払っても満足度は上がりにくいからです。
