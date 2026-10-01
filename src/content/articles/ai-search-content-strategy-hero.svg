@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#f4f1ea"/>
+<path d="M0 690 C260 560 420 790 690 630 S1120 470 1600 650 V900 H0Z" fill="#111"/>
+<circle cx="1280" cy="190" r="118" fill="none" stroke="#111" stroke-width="18"/>
+<circle cx="1280" cy="190" r="18" fill="#111"/>
+<path d="M1280 72V15M1280 365v-57M1162 190h-57M1455 190h-57M1197 107l-40-40M1403 313l-40-40M1363 107l40-40M1157 313l40-40" stroke="#111" stroke-width="14" stroke-linecap="round"/>
+<g transform="translate(180 145)">
+<text x="0" y="0" font-family="Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="5">SEARCH × AI × DATA</text>
+<text x="0" y="95" font-family="Arial, sans-serif" font-size="78" font-weight="800">生成AI検索時代の</text>
+<text x="0" y="190" font-family="Arial, sans-serif" font-size="78" font-weight="800">コンテンツ設計</text>
+<text x="4" y="258" font-family="Arial, sans-serif" font-size="30">SEOを捨てず、独自計算と計測で「引用する価値」をつくる</text>
+</g>
+<g transform="translate(180 520)" fill="none" stroke="#111" stroke-width="10">
+<rect x="0" y="0" width="130" height="95" rx="12"/>
+<path d="M28 67l28-27 24 18 25-36"/>
+<path d="M175 76h150M175 38h220"/>
+<circle cx="455" cy="48" r="42"/><path d="M486 78l48 48"/>
+<path d="M590 76h210M590 38h135"/>
+</g>
+<text x="1245" y="815" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#f4f1ea" letter-spacing="4">HOBNOVA</text>
+</svg>
