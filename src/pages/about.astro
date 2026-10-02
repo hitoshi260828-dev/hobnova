@@ -34,16 +34,27 @@ import { CATEGORIES, SITE_TAGLINE } from '../consts';
       <ul class="mt-4 space-y-4">
         {
           CATEGORIES.map((c) => (
-            <li class="flex items-start gap-4 rounded-xl border border-border bg-white p-4">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg-light text-navy">
-                <CategoryIcon id={c.id} class="h-5 w-5" />
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-navy">
-                  {c.labelEn} <span class="ml-1 text-xs font-normal text-charcoal/50">{c.labelJa}</span>
-                </p>
-                <p class="mt-1 text-sm text-charcoal/70">{c.description}</p>
-              </div>
+            <li>
+              <a
+                href={c.href}
+                class="group flex items-start gap-4 rounded-xl border border-border bg-white p-4 transition hover:border-navy/30 hover:bg-bg-light"
+              >
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg-light text-navy">
+                  <CategoryIcon id={c.id} class="h-5 w-5" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-navy">
+                    {c.labelEn} <span class="ml-1 text-xs font-normal text-charcoal/50">{c.labelJa}</span>
+                  </p>
+                  <p class="mt-1 text-sm text-charcoal/70">{c.description}</p>
+                </div>
+                <span
+                  aria-hidden="true"
+                  class="mt-1 shrink-0 text-lg leading-none text-charcoal/35 transition group-hover:translate-x-0.5 group-hover:text-navy"
+                >
+                  →
+                </span>
+              </a>
             </li>
           ))
         }
