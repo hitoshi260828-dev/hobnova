@@ -5,6 +5,7 @@ publishDate: 2026-08-02
 tags: ["キャンプ", "計算ツール"]
 draft: false
 featured: false
+image: "./camp-gear-budget-calculator-hero.webp"
 toolId: "camp-budget"
 ---
 

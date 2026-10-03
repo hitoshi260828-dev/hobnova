@@ -5,6 +5,7 @@ publishDate: 2026-08-12
 tags: ["住宅", "シミュレーター"]
 draft: false
 featured: true
+image: "./rent-vs-buy-simulator-hero.webp"
 toolId: "rent-vs-buy"
 ---
 

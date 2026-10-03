@@ -5,6 +5,7 @@ publishDate: 2026-08-18
 tags: ["市場データ", "キャンプ"]
 draft: false
 featured: true
+image: "./camp-market-trend-hero.webp"
 source: "サンプルデータ（実データ差し替え予定）"
 stats:
   - label: "市場規模"

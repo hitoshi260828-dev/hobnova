@@ -5,6 +5,7 @@ publishDate: 2026-08-08
 tags: ["価格推移", "スマートフォン"]
 draft: false
 featured: false
+image: "./smartphone-price-trend-hero.webp"
 source: "サンプルデータ（実データ差し替え予定）"
 stats:
   - label: "平均価格"
