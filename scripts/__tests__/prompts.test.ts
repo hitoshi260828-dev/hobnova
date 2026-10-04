@@ -50,13 +50,46 @@ describe('buildInlineImagePrompt', () => {
     expect(prompt).toContain('セクションの要約文');
   });
 
-  it('画像内に文字を書かせない指示を含む', () => {
+  it('画像内に文字・数字・ロゴ等を書かせない禁止事項を明示的に列挙する', () => {
     const prompt = buildInlineImagePrompt({
       articleTitle: 't',
-      section: makeSelected('h', 'conceptual-diagram'),
+      section: makeSelected('h', 'realistic-spatial-composition'),
       sectionSummary: 's',
     });
-    expect(prompt).toMatch(/do not render any text/i);
+    expect(prompt).toMatch(/no text/i);
+    expect(prompt).toMatch(/no letters/i);
+    expect(prompt).toMatch(/no numbers/i);
+    expect(prompt).toMatch(/no labels/i);
+    expect(prompt).toMatch(/no logos/i);
+    expect(prompt).toMatch(/no signs/i);
+    expect(prompt).toMatch(/no packaging text/i);
+    expect(prompt).toMatch(/no UI elements/i);
+    expect(prompt).toMatch(/no watermark/i);
+  });
+
+  it('infographic/diagram/label/UI/signageを連想させる語を使わない', () => {
+    for (const style of ['product-editorial', 'lifestyle-photography-like', 'realistic-spatial-composition', 'clean-object-composition'] as const) {
+      const prompt = buildInlineImagePrompt({
+        articleTitle: 't',
+        section: makeSelected('h', style),
+        sectionSummary: 's',
+      });
+      // 禁止事項の列挙（"no labels"等）は許可するが、スタイル指示として
+      // infographic/diagram/signageという単語そのものは使わない。
+      expect(prompt).not.toMatch(/infographic/i);
+      expect(prompt).not.toMatch(/\bdiagram\b/i);
+      expect(prompt).not.toMatch(/signage/i);
+    }
+  });
+
+  it('主題・対象物・使用シーンを明示する指示を含む', () => {
+    const prompt = buildInlineImagePrompt({
+      articleTitle: 't',
+      section: makeSelected('h', 'product-editorial'),
+      sectionSummary: 's',
+    });
+    expect(prompt).toMatch(/subject/i);
+    expect(prompt).toMatch(/usage scene|realistic usage scene/i);
   });
 });
 
@@ -86,8 +119,8 @@ describe('generateAltText', () => {
   it('スタイルごとに異なる文言を生成する', () => {
     const a = generateAltText(makeSelected('見出し', 'product-editorial'));
     const b = generateAltText(makeSelected('見出し', 'lifestyle-photography-like'));
-    const c = generateAltText(makeSelected('見出し', 'conceptual-diagram'));
-    const d = generateAltText(makeSelected('見出し', 'infographic-like'));
+    const c = generateAltText(makeSelected('見出し', 'realistic-spatial-composition'));
+    const d = generateAltText(makeSelected('見出し', 'clean-object-composition'));
     const unique = new Set([a, b, c, d]);
     expect(unique.size).toBe(4);
   });

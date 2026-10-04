@@ -25,6 +25,30 @@ describe('generateInlineImage', () => {
     expect(result.buffer.toString()).toBe('fake-image-bytes');
   });
 
+  it('multipart/form-data（FormData）でprompt/width/heightを送信し、Content-Typeは手動設定しない', async () => {
+    const base64 = Buffer.from('x').toString('base64');
+    const mockFetch = fetch as unknown as ReturnType<typeof vi.fn>;
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ result: { image: base64 } }),
+    });
+
+    await generateInlineImage('テスト用プロンプト', { ...CONFIG, width: 1024, height: 1024, guidance: 3.5 });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(String(url)).toContain(CONFIG.model);
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(init.headers['content-type']).toBeUndefined();
+
+    const form = init.body as FormData;
+    expect(form.get('prompt')).toBe('テスト用プロンプト');
+    expect(form.get('width')).toBe('1024');
+    expect(form.get('height')).toBe('1024');
+    expect(form.get('guidance')).toBe('3.5');
+  });
+
   it('トップレベルのimageフィールドにも対応する', async () => {
     const base64 = Buffer.from('top-level').toString('base64');
     (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({

@@ -44,15 +44,15 @@ const EXCLUDE_HEADING_PATTERNS = [
 const PRIORITY_KEYWORDS: Array<{ pattern: RegExp; score: number; style: InlineImageStyle; reason: string }> = [
   { pattern: /比較|vs\.?|対決/i, score: 3, style: 'product-editorial', reason: '製品・選択肢の比較' },
   { pattern: /使用シーン|使い方|活用シーン|シーン/, score: 3, style: 'lifestyle-photography-like', reason: '使用シーンの説明' },
-  { pattern: /仕組み|構造|原理|メカニズム/, score: 3, style: 'conceptual-diagram', reason: '構造・仕組みの説明' },
+  { pattern: /仕組み|構造|原理|メカニズム/, score: 3, style: 'realistic-spatial-composition', reason: '構造・仕組みの説明' },
   { pattern: /ライフスタイル|暮らし|生活/, score: 2, style: 'lifestyle-photography-like', reason: 'ライフスタイル比較' },
-  { pattern: /選び方|選ぶ|タイプ別|種類/, score: 2, style: 'infographic-like', reason: '複数の選択肢の説明' },
+  { pattern: /選び方|選ぶ|タイプ別|種類/, score: 2, style: 'clean-object-composition', reason: '複数の選択肢の説明' },
   { pattern: /購入|買い替え|おすすめ/, score: 2, style: 'product-editorial', reason: '購入判断のイメージ補助' },
   { pattern: /before|after|ビフォー|アフター/i, score: 3, style: 'lifestyle-photography-like', reason: 'Before/After的な内容' },
-  { pattern: /技術|規格|テクノロジー/, score: 1, style: 'conceptual-diagram', reason: '技術概念の説明' },
+  { pattern: /技術|規格|テクノロジー/, score: 1, style: 'realistic-spatial-composition', reason: '技術概念の説明' },
 ];
 
-const DEFAULT_STYLE: InlineImageStyle = 'infographic-like';
+const DEFAULT_STYLE: InlineImageStyle = 'clean-object-composition';
 
 function isExcluded(section: ArticleSection): boolean {
   return EXCLUDE_HEADING_PATTERNS.some((pattern) => pattern.test(section.heading));

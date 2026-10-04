@@ -1,6 +1,6 @@
 import type { InlineImageStyle, SelectedSection } from './types';
 
-// HOBNOVA共通のビジュアル指示。全てのカバー画像・本文画像で共通して付与する。
+// HOBNOVA共通のビジュアル指示。カバー画像（OpenAI）に使用する。
 export const HOBNOVA_VISUAL_GUIDELINE = `Editorial illustration for HOBNOVA, a Japanese technology and lifestyle media site.
 Clean, modern, sophisticated editorial visual.
 Minimal composition.
@@ -41,12 +41,19 @@ key takeaway visually, without relying on any text in the image. Do not render a
 or captions — the title is displayed separately on the website.`;
 }
 
+// 本文画像（Cloudflare）のスタイル指示。
+// 重要: "infographic" "diagram" "label" "UI" "signage" を連想させる語は、モデルが
+// プロンプトへ文字・ラベルを描き込む強いバイアスになることを実地検証で確認したため、
+// 原則として使わない。代わりに実写・編集写真的な構図の語彙で表現する。
 const STYLE_HINT: Record<InlineImageStyle, string> = {
-  'infographic-like':
-    'infographic-like composition that communicates structure through layout and iconography alone (no embedded text or labels)',
-  'product-editorial': 'product editorial photography-like illustration, comparing the items clearly',
-  'lifestyle-photography-like': 'lifestyle photography-like illustration showing real-world use',
-  'conceptual-diagram': 'conceptual diagram illustrating the mechanism or structure, without embedded text or labels',
+  'product-editorial':
+    'editorial product photography-like illustration, placing the compared items side by side in a realistic setting so their differences read visually',
+  'lifestyle-photography-like':
+    'lifestyle photography-like illustration showing the subject being used in an authentic, real-world scene',
+  'realistic-spatial-composition':
+    'realistic spatial composition that conveys the mechanism or relationship through the physical arrangement of real objects in a believable environment, photographed naturally',
+  'clean-object-composition':
+    'clean object composition, a small set of real physical items arranged thoughtfully on a simple surface, editorial product-photography styling',
 };
 
 export interface InlineSectionSummaryInput {
@@ -56,36 +63,38 @@ export interface InlineSectionSummaryInput {
   sectionSummary: string;
 }
 
-/** 本文画像のプロンプト。対象H2/H3とその周辺本文を使い、記事タイトルだけに頼らない。 */
+/**
+ * 本文画像のプロンプト。対象H2/H3とその周辺本文を使い、記事タイトルだけに頼らない。
+ * 主題・対象物・使用シーンを明示し、実写的な構図を優先する。禁止事項は冗長なくらい
+ * 明示的に列挙する（モデルがinfographic的な文字描画へ流れるのを防ぐため）。
+ */
 export function buildInlineImagePrompt(input: InlineSectionSummaryInput): string {
   return `Editorial illustration for a Japanese technology and lifestyle article.
 
-Article topic:
+Article topic (overall subject):
 ${input.articleTitle}
 
-Section:
+Section heading:
 ${input.section.section.heading}
 
-Context:
+Section context (use this to identify the specific subject, object, and usage scene to depict):
 ${input.sectionSummary}
 
-Create a clear visual that helps the reader understand this section.
-
-Style:
-clean editorial illustration,
-realistic proportions,
-minimal modern composition,
-professional Japanese web magazine,
-neutral colors,
-no text,
-no logo,
-no watermark,
-avoid generic AI art,
-avoid excessive futuristic glow,
+Depict the specific subject/object described above, placed in a realistic usage scene or
+product arrangement that matches this section's content. Prioritize:
+- editorial photography-like illustration
+- product or lifestyle scene
+- clean object composition
+- realistic spatial composition
 ${STYLE_HINT[input.section.style]}.
 
-Important: do not render any text, labels, or captions inside the image — if labels would be
-needed to explain the diagram, the website will add them separately with SVG/HTML/CSS.`;
+Style: clean editorial illustration, realistic proportions, minimal modern composition,
+professional Japanese web magazine aesthetic, neutral colors, avoid generic AI art, avoid
+excessive futuristic glow.
+
+Strictly avoid all of the following in the image:
+no text, no letters, no numbers, no labels, no logos, no signs, no packaging text,
+no UI elements, no watermark.`;
 }
 
 /** セクション本文からプロンプト用の短い要約プレーンテキストを作る（先頭数文、見出し等は除去）。 */
@@ -117,9 +126,9 @@ export function generateAltText(section: SelectedSection): string {
       return `${quoted}について選択肢を比較しているイメージ`;
     case 'lifestyle-photography-like':
       return `${quoted}を実際に利用している場面のイメージ`;
-    case 'conceptual-diagram':
-      return `${quoted}の仕組みを示すイメージ`;
-    case 'infographic-like':
+    case 'realistic-spatial-composition':
+      return `${quoted}の関係性を示すイメージ`;
+    case 'clean-object-composition':
     default:
       return `${quoted}の内容を整理したイメージ`;
   }

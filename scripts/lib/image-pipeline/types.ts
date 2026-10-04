@@ -10,10 +10,10 @@ export interface ArticleSection {
 }
 
 export type InlineImageStyle =
-  | 'infographic-like'
+  | 'clean-object-composition'
   | 'product-editorial'
   | 'lifestyle-photography-like'
-  | 'conceptual-diagram';
+  | 'realistic-spatial-composition';
 
 export interface SelectedSection {
   section: ArticleSection;

@@ -19,7 +19,11 @@ import {
 } from './lib/image-pipeline/article-file';
 import { buildImagePlan } from './lib/image-pipeline/plan';
 import { generateCoverImage, resolveOpenAiImageModel } from './lib/image-pipeline/openai-cover';
-import { generateInlineImage, resolveCloudflareImageModel } from './lib/image-pipeline/cloudflare-inline';
+import {
+  generateInlineImage,
+  resolveCloudflareImageGuidance,
+  resolveCloudflareImageModel,
+} from './lib/image-pipeline/cloudflare-inline';
 import { insertInlineImages } from './lib/image-pipeline/markdown-insert';
 import { parseArgs } from './lib/image-pipeline/cli-args';
 import type { PlanItem } from './lib/image-pipeline/types';
@@ -111,6 +115,7 @@ async function main() {
       console.warn('[WARN] CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN が未設定のため、本文画像生成をスキップします。');
     } else {
       const model = resolveCloudflareImageModel();
+      const guidance = resolveCloudflareImageGuidance();
       const inlineDir = publicInlineImageDir(REPO_ROOT, article.slug);
       ensureDir(inlineDir);
 
@@ -118,7 +123,14 @@ async function main() {
         const item = plan.inlineItems[i];
         const selected = plan.selectedSections[i];
         try {
-          const { buffer, ext } = await generateInlineImage(item.prompt, { accountId, apiToken, model });
+          const { buffer, ext } = await generateInlineImage(item.prompt, {
+            accountId,
+            apiToken,
+            model,
+            width: 1024,
+            height: 1024,
+            guidance,
+          });
           const fileName = path.basename(item.targetPath).replace(/\.jpg$/, `.${ext}`);
           const absoluteTarget = path.join(inlineDir, fileName);
           fs.writeFileSync(absoluteTarget, buffer);
