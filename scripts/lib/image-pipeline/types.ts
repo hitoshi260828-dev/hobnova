@@ -44,4 +44,6 @@ export interface PlanItem {
   prompt: string;
   alt?: string;
   heading?: string;
+  /** cover のみ。画像内に表示する日本語コピー。 */
+  copy?: { line1: string; line2: string };
 }

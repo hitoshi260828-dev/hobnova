@@ -1,13 +1,15 @@
 import type { InlineImageStyle, SelectedSection } from './types';
+import type { CoverCopy } from './cover-copy';
 
 // HOBNOVA共通のビジュアル指示。カバー画像（OpenAI）に使用する。
-export const HOBNOVA_VISUAL_GUIDELINE = `Editorial illustration for HOBNOVA, a Japanese technology and lifestyle media site.
-Clean, modern, sophisticated editorial visual.
-Minimal composition.
-Neutral and monochrome-oriented palette with restrained accent colors.
-Not a generic AI-generated fantasy image.
+// カバーは「記事テーマを表現するビジュアル + 日本語コピー」を1枚にまとめる方式のため、
+// 本文画像（Cloudflare、文字なし方針）とは異なり、意図的に文字を描かせる。
+export const HOBNOVA_VISUAL_GUIDELINE = `Editorial eye-catch image for HOBNOVA, a Japanese technology and lifestyle web media.
+Clean, modern, sophisticated editorial visual, in the style of a Japanese web media's eye-catch thumbnail.
+Minimal composition with generous negative space.
+Neutral and monochrome-oriented palette with a restrained, content-appropriate accent color.
+Avoid an overly "generic AI-generated" look.
 No excessive glow.
-No unnecessary text.
 No logos.
 No watermark.
 No random UI elements.
@@ -21,13 +23,19 @@ export interface CoverPromptInput {
   mainTakeaway: string;
   /** 本文の冒頭抜粋（テーマ把握用。長すぎる場合は呼び出し側で切り詰める） */
   bodyExcerpt: string;
+  /** 画像内に表示する日本語コピー（2行以内、buildCoverCopyで生成） */
+  copy: CoverCopy;
 }
 
 /**
  * アイキャッチ画像のプロンプト。タイトルだけでなくdescription/category/本文/結論を
- * 反映する。文字を描かせないことを明示する。
+ * 反映する。記事内容を要約した日本語コピーを画像内へ明確に表示することを指示する
+ * （本文画像とは逆に、文字を描かせる方針）。日本語の文字崩れを避けることを重視する。
  */
 export function buildCoverPrompt(input: CoverPromptInput): string {
+  const { line1, line2 } = input.copy;
+  const copyDisplay = line2 ? `${line1}\n${line2}` : line1;
+
   return `${HOBNOVA_VISUAL_GUIDELINE}
 
 Article title: ${input.title}
@@ -36,9 +44,25 @@ Summary: ${input.description}
 Key takeaway: ${input.mainTakeaway}
 Article context: ${input.bodyExcerpt}
 
-This is the eye-catch/cover image for the article above. Depict the article's core subject and
-key takeaway visually, without relying on any text in the image. Do not render any words, titles,
-or captions — the title is displayed separately on the website.`;
+This is the eye-catch/cover image for the article above. Depict the article's core subject
+visually as the background/supporting visual, and prominently display the following Japanese
+copy text as the main typographic element of the image, exactly as written (do not translate,
+paraphrase, or alter the text in any way):
+
+"""
+${copyDisplay}
+"""
+
+Typography and layout requirements (highest priority):
+- Render the Japanese text completely accurately, with no corrupted, garbled, or malformed
+  characters. Double-check that every character is a real, correctly-formed Japanese character.
+- Keep the copy to ${line2 ? 'two lines, exactly as line-broken above' : 'a single line'}.
+- Text legibility is the top priority: use strong contrast between the text and its background,
+  ample surrounding whitespace/negative space, and a clean modern sans-serif-style Japanese
+  typography suitable for a web media thumbnail.
+- The text must not overlap with the photographic/product visual — keep them in clearly separate
+  areas of the composition.
+- Do not add any other text, labels, logos, or captions beyond the copy text specified above.`;
 }
 
 // 本文画像（Cloudflare）のスタイル指示。

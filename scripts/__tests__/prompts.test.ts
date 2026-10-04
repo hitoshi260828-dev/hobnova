@@ -10,6 +10,7 @@ describe('buildCoverPrompt', () => {
       category: 'gadget',
       mainTakeaway: '主要な結論テキスト',
       bodyExcerpt: '本文の抜粋テキスト',
+      copy: { line1: 'テストコピー1', line2: 'テストコピー2' },
     });
     expect(prompt).toContain('テスト記事タイトル');
     expect(prompt).toContain('テストの説明文です');
@@ -18,15 +19,45 @@ describe('buildCoverPrompt', () => {
     expect(prompt).toContain('本文の抜粋テキスト');
   });
 
-  it('文字を描かせない指示を含む', () => {
+  it('日本語コピーを画像内へ明確に表示する指示を含む（2行指定）', () => {
     const prompt = buildCoverPrompt({
       title: 't',
       description: 'd',
       category: 'c',
       mainTakeaway: 'm',
       bodyExcerpt: 'b',
+      copy: { line1: 'コピー1行目', line2: 'コピー2行目' },
     });
-    expect(prompt).toMatch(/no text|No unnecessary text/i);
+    expect(prompt).toContain('コピー1行目');
+    expect(prompt).toContain('コピー2行目');
+    expect(prompt).toMatch(/two lines/i);
+  });
+
+  it('line2が空なら単一行として指示する', () => {
+    const prompt = buildCoverPrompt({
+      title: 't',
+      description: 'd',
+      category: 'c',
+      mainTakeaway: 'm',
+      bodyExcerpt: 'b',
+      copy: { line1: 'コピー1行だけ', line2: '' },
+    });
+    expect(prompt).toContain('コピー1行だけ');
+    expect(prompt).toMatch(/single line/i);
+  });
+
+  it('日本語の文字崩れを避ける指示・可読性優先・文字と写真を重ねない指示を含む', () => {
+    const prompt = buildCoverPrompt({
+      title: 't',
+      description: 'd',
+      category: 'c',
+      mainTakeaway: 'm',
+      bodyExcerpt: 'b',
+      copy: { line1: 'x', line2: 'y' },
+    });
+    expect(prompt).toMatch(/garbled|malformed/i);
+    expect(prompt).toMatch(/legibility/i);
+    expect(prompt).toMatch(/must not overlap/i);
   });
 });
 

@@ -2,6 +2,7 @@ import path from 'node:path';
 import type { ArticleFile } from './article-file';
 import { parseSections, selectSectionsForImages, targetInlineImageCount } from './sections';
 import { buildCoverPrompt, buildInlineImagePrompt, generateAltText, summarizeSectionForPrompt } from './prompts';
+import { buildCoverCopy } from './cover-copy';
 import type { PlanItem, SelectedSection } from './types';
 
 export interface BuildPlanOptions {
@@ -42,6 +43,7 @@ export function buildImagePlan(options: BuildPlanOptions): ImagePlan {
       const description = String(article.data.description ?? '');
       const category = String(article.data.category ?? '');
       const bodyExcerpt = summarizeSectionForPrompt(article.body, 500);
+      const copy = buildCoverCopy(title, description);
 
       coverItem = {
         kind: 'cover',
@@ -53,7 +55,9 @@ export function buildImagePlan(options: BuildPlanOptions): ImagePlan {
           // 「主要結論」はLLM要約を追加で呼ばず、既に人間が書いたdescriptionを根拠として使う。
           mainTakeaway: description,
           bodyExcerpt,
+          copy,
         }),
+        copy,
       };
     }
   }

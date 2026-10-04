@@ -43,6 +43,9 @@ function printPlan(article: ArticleFile, items: { coverItem: PlanItem | null; in
   console.log('--- 生成予定 ---');
   if (items.coverItem) {
     console.log(`[cover] -> ${items.coverItem.targetPath}`);
+    if (items.coverItem.copy) {
+      console.log(`  copy: ${items.coverItem.copy.line1} / ${items.coverItem.copy.line2}`);
+    }
     console.log(`  prompt: ${items.coverItem.prompt.replace(/\n/g, ' ').slice(0, 200)}...`);
   }
   for (const item of items.inlineItems) {
