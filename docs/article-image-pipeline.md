@@ -1,5 +1,61 @@
 # 記事画像自動生成パイプライン
 
+HOBNOVAの記事画像には2つの入手経路があり、どちらも同じ保存規約・Markdown挿入ロジック
+（`scripts/lib/image-pipeline/`）を共有する。
+
+- `scripts/generate-article-images.ts`: OpenAI Image API（アイキャッチ）・Cloudflare
+  Workers AI（本文画像）で**API生成**する
+- `scripts/import-generated-image.ts`: ChatGPT等で**既に生成済みのローカル画像ファイルを
+  取り込む**（API呼び出しなし）
+
+## images:import（外部生成画像の取り込み）
+
+ChatGPT上で対話しながら作った画像をローカルへ保存し、そのファイルをそのまま記事へ採用する
+CLI。OpenAI/Cloudflareの画像生成APIは一切呼び出さない。
+
+```bash
+# アイキャッチ
+npm run images:import -- --article src/content/articles/xxxx.md \
+  --image "C:/Users/you/Downloads/chatgpt-image.png" --type cover
+
+# 本文画像（見出し指定）
+npm run images:import -- --article src/content/articles/xxxx.md \
+  --image "C:/Users/you/Downloads/chatgpt-image.png" --type inline \
+  --after-heading "対象のH2見出しテキスト"
+
+# 本文画像（セクション番号指定。1始まり、--after-headingの代わり）
+npm run images:import -- --article src/content/articles/xxxx.md \
+  --image "C:/Users/you/Downloads/chatgpt-image.png" --type inline --position 2
+```
+
+オプション: `--alt <text>`（未指定ならタイトル・見出しからルールベース自動生成）、
+`--copy-only`（記事側は更新せず画像ファイルのコピーのみ行う）、`--dry-run`、`--force`
+（既存カバーの上書き／二重挿入チェックのバイパス）。
+
+対応形式: png / jpg / jpeg / webp / svg。**再圧縮・再エンコードは行わず元ファイルをそのまま
+コピーする**（最適化処理を将来追加する場合に備え、画像取得層 `import-source.ts` と
+HOBNOVA側の保存・更新ロジック `import-image.ts` を分離してある）。
+
+保存規約・二重防止ロジックはAPI生成パイプラインと完全に共通（`article-file.ts` /
+`markdown-insert.ts` を両CLIで共有）。カバーは既存があれば`--force`無しでスキップ、
+本文画像は既存ファイルの最大連番+1を自動採番し、同一パスが本文へ既に挿入されていれば
+`--force`無しでスキップする。
+
+### 失敗時の安全性
+
+画像ファイルのコピーに成功した後、frontmatter/Markdownの更新に失敗した場合は、コピー済みの
+画像ファイルを自動的に削除してロールバックする（削除自体に失敗した場合は、処理を止めずに
+孤立ファイルのパスを警告として出力する）。`--dry-run`時は一切の書き込みを行わない。
+
+### 将来のChatGPT直接連携に向けた設計
+
+`import-source.ts` は画像の取得元を抽象化しており、現状は`local-file`のみ対応しているが、
+将来的に`base64`入力や`remote`（GitHub blobなど）を追加する場合も、この層へkindを増やす
+だけでよく、`import-image.ts`（HOBNOVA側の保存・frontmatter/Markdown更新ロジック）は
+変更不要な設計にしてある。
+
+## generate（API自動生成）
+
 `scripts/generate-article-images.ts` は、HOBNOVAの記事に対してアイキャッチ画像（OpenAI
 Image API）と本文画像（Cloudflare Workers AI）を自動生成し、既存のAstroプロジェクト内へ
 保存・Markdownへ自動挿入するCLIです。

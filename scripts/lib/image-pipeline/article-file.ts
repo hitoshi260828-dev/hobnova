@@ -22,7 +22,12 @@ export function loadArticleFile(articlePathInput: string): ArticleFile {
   }
 
   const raw = fs.readFileSync(absolutePath, 'utf8');
-  const parsed = matter(raw);
+  // gray-matterは引数なし呼び出し（matter(raw)）だと「生文字列 -> 解析結果」をプロセス内で
+  // グローバルキャッシュし、しかもキャッシュヒット時はdataオブジェクトの参照をそのまま返す。
+  // そのため、内容が同一の記事を複数回読み込んで一方のdataを変更すると、他方にも影響してしまう
+  // （実際にこの不具合でテストが汚染された）。第2引数へ空オプションを渡すとキャッシュを使わない
+  // 経路になるため、明示的に {} を渡してキャッシュを無効化する。
+  const parsed = matter(raw, {});
   const slug = path.basename(absolutePath).replace(/\.(md|mdx)$/i, '');
 
   return {
@@ -53,13 +58,28 @@ export function publicInlineImageDir(repoRoot: string, slug: string): string {
   return path.join(repoRoot, 'public', 'images', 'articles', slug);
 }
 
+const INLINE_FILE_PATTERN = /^inline-(\d+)\.(png|jpe?g|webp|svg)$/i;
+
 /** 既存の本文（inline）画像が1枚でも存在するか判定する。 */
 export function hasExistingInlineImages(repoRoot: string, slug: string): boolean {
   const dir = publicInlineImageDir(repoRoot, slug);
   if (!fs.existsSync(dir)) return false;
-  return fs
+  return fs.readdirSync(dir).some((name) => INLINE_FILE_PATTERN.test(name));
+}
+
+/** 次に使うべきinline画像の連番を返す（既存の最大値+1、無ければ1）。 */
+export function nextInlineIndex(repoRoot: string, slug: string): number {
+  const dir = publicInlineImageDir(repoRoot, slug);
+  if (!fs.existsSync(dir)) return 1;
+
+  const max = fs
     .readdirSync(dir)
-    .some((name) => /^inline-\d+\.(png|jpe?g|webp)$/i.test(name));
+    .map((name) => INLINE_FILE_PATTERN.exec(name))
+    .filter((m): m is RegExpExecArray => m !== null)
+    .map((m) => Number.parseInt(m[1], 10))
+    .reduce((acc, n) => Math.max(acc, n), 0);
+
+  return max + 1;
 }
 
 export function ensureDir(dirPath: string): void {
