@@ -10,7 +10,10 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "check:functions": "tsc -p functions/tsconfig.json"
+    "check:functions": "tsc -p functions/tsconfig.json",
+    "check:scripts": "tsc -p scripts/tsconfig.json",
+    "images:generate": "tsx scripts/generate-article-images.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.8",
@@ -30,7 +33,12 @@
     "@astrojs/check": "^0.9.10",
     "@cloudflare/workers-types": "^5.20260929.1",
     "@tailwindcss/typography": "^0.5.20",
+    "@types/node": "^24.19.1",
+    "gray-matter": "^4.0.3",
+    "openai": "^7.27.0",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
+    "vitest": "^5.0.3",
     "wrangler": "^4.143.0"
   }
 }
