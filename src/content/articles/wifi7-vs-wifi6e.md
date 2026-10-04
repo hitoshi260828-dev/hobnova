@@ -1,13 +1,19 @@
 ---
-title: "Wi-Fi 7は必要？Wi-Fi 6Eとの違いを320MHz・MLO・6GHzで整理"
-description: "Wi-Fi 7とWi-Fi 6Eの違いを、320MHz幅、4K-QAM、MLO、6GHz対応から整理。買い替えで効果が出やすい環境と、急いで変えなくていいケースを解説します。"
-publishDate: 2026-10-03
-category: "gadget"
-tags: ["Wi-Fi 7", "Wi-Fi 6E", "Wi-Fi", "ルーター"]
-image: "./wifi7-vs-wifi6e-hero.svg"
+title: Wi-Fi 7は必要？Wi-Fi 6Eとの違いを320MHz・MLO・6GHzで整理
+description: >-
+  Wi-Fi 7とWi-Fi
+  6Eの違いを、320MHz幅、4K-QAM、MLO、6GHz対応から整理。買い替えで効果が出やすい環境と、急いで変えなくていいケースを解説します。
+publishDate: 2026-10-03T00:00:00.000Z
+category: gadget
+tags:
+  - Wi-Fi 7
+  - Wi-Fi 6E
+  - Wi-Fi
+  - ルーター
+image: ./wifi7-vs-wifi6e-hero.png
 draft: false
 featured: false
-source: "Intel公式情報（2026年10月3日確認）"
+source: Intel公式情報（2026年10月3日確認）
 ---
 
 Wi-Fiルーターを買い替えるとき、「Wi-Fi 7まで必要なのか」「Wi-Fi 6Eで十分なのか」はかなり分かりにくいポイントです。
