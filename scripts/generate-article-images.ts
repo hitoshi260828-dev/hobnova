@@ -23,6 +23,7 @@ import {
   generateInlineImage,
   resolveCloudflareImageGuidance,
   resolveCloudflareImageModel,
+  resolveCloudflareImageSteps,
 } from './lib/image-pipeline/cloudflare-inline';
 import { insertInlineImages } from './lib/image-pipeline/markdown-insert';
 import { parseArgs } from './lib/image-pipeline/cli-args';
@@ -116,6 +117,7 @@ async function main() {
     } else {
       const model = resolveCloudflareImageModel();
       const guidance = resolveCloudflareImageGuidance();
+      const steps = resolveCloudflareImageSteps();
       const inlineDir = publicInlineImageDir(REPO_ROOT, article.slug);
       ensureDir(inlineDir);
 
@@ -130,6 +132,7 @@ async function main() {
             width: 1024,
             height: 1024,
             guidance,
+            steps,
           });
           const fileName = path.basename(item.targetPath).replace(/\.jpg$/, `.${ext}`);
           const absoluteTarget = path.join(inlineDir, fileName);

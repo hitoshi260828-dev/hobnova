@@ -41,7 +41,31 @@ CIではGitHub Secretsを使う。
 | `OPENAI_IMAGE_MODEL` | 任意 | `gpt-image-1` |
 | `CLOUDFLARE_ACCOUNT_ID` | 本文画像生成に必須 | なし（未設定なら本文画像生成をスキップ） |
 | `CLOUDFLARE_API_TOKEN` | 本文画像生成に必須 | なし |
-| `CLOUDFLARE_IMAGE_MODEL` | 任意 | `@cf/black-forest-labs/flux-1-schnell` |
+| `CLOUDFLARE_IMAGE_MODEL` | 任意 | `@cf/black-forest-labs/flux-2-dev` |
+| `CLOUDFLARE_IMAGE_STEPS` | 任意 | `25`（1〜50の範囲外・不正値は25へフォールバック。`flux-2-dev`等steps調整可能なモデルのみ有効） |
+| `CLOUDFLARE_IMAGE_GUIDANCE` | 任意 | 未設定なら送信しない |
+
+### モデルごとの送信方式（自動判定）
+
+`requiresMultipart()`（モデル名に`flux-2`を含むかどうか）で、リクエスト形式を自動的に切り替える。
+
+| モデル | 送信形式 | 送信フィールド |
+|---|---|---|
+| `@cf/black-forest-labs/flux-2-dev`（既定） | multipart/form-data | `prompt`, `width`, `height`, `steps`, `guidance`（設定時のみ） |
+| `@cf/black-forest-labs/flux-2-klein-9b` | multipart/form-data | `prompt`, `width`, `height`, `guidance`（設定時のみ）。**stepsは固定のため送らない** |
+| `@cf/black-forest-labs/flux-1-schnell`（JSON方式の旧世代モデル） | JSON | `prompt` のみ（width/height/steps/guidanceは実機未検証のため送らない） |
+
+Content-Typeヘッダーはmultipart送信時に手動設定しない（`fetch`/undiciがFormDataから
+boundary付きヘッダーを自動生成するため、手動設定するとboundaryが欠落して壊れる）。
+
+### flux-2-klein-9bについて（既定から除外・再検証可能）
+
+実機検証の結果、`@cf/black-forest-labs/flux-2-klein-9b`は現在のmultipart実装・アカウント・
+REST直叩き経路で`6003 Request body is not valid json`エラーとなり生成できませんでした。
+同一コード・同一アカウントで`@cf/black-forest-labs/flux-2-dev`は生成に成功しているため、
+klein-9b固有の問題（アカウントのプラン要件、またはCloudflare側のモデル固有の不具合の
+可能性）と判断し、既定モデルから外しています。`CLOUDFLARE_IMAGE_MODEL`に明示指定すれば
+いつでも再検証できます。
 
 ## 本文画像の選定ロジック
 
@@ -53,6 +77,27 @@ CIではGitHub Secretsを使う。
   それ以上=4枚（**この4枚がコスト暴走防止のハードキャップ**。文字数に関わらずこれを超えない）
 - 除外: まとめ/結論/FAQ/よくある質問/注意事項/参考リンク 等の見出し
 - 優先: 比較、使用シーン、仕組み・構造、ライフスタイル、選び方、購入判断、Before/After 等
+
+## 概算コスト（flux-2-dev、steps=25、1024×1024）
+
+Cloudflare公式料金表（2026年10月時点）によると、flux-2-devは
+「出力512×512タイルあたり・ステップあたり $0.00041」。1024×1024出力は512×512タイル4枚分。
+
+```
+1枚あたり ≈ 4 tiles × 25 steps × $0.00041 = $0.041
+```
+
+| 1記事あたりの本文画像枚数 | 概算コスト |
+|---|---|
+| 1枚 | 約 $0.041 |
+| 2枚 | 約 $0.082 |
+| 3枚 | 約 $0.123 |
+| 4枚（上限） | 約 $0.164 |
+
+アイキャッチ（OpenAI `gpt-image-1`）は別料金体系（本リポジトリでは未計測）。
+`CLOUDFLARE_IMAGE_STEPS`を下げるとコストは比例して下がる（例: steps=10なら上記の40%）。
+料金は変更される可能性があるため、最新値は
+[Workers AI Pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) を参照。
 
 ## コスト安全装置
 
