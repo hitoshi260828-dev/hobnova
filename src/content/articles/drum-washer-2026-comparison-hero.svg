@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024" role="img" aria-labelledby="title desc">
+  <title id="title">2026年ドラム式洗濯乾燥機3社比較</title>
+  <desc id="desc">3台のドラム式洗濯乾燥機と、乾燥容量・時間・消費電力量を比較する図解</desc>
+  <rect width="1536" height="1024" fill="#f6f8fb"/>
+  <rect x="120" y="120" width="1296" height="784" rx="40" fill="#ffffff" stroke="#d9e1ea" stroke-width="3"/>
+  <text x="768" y="205" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="54" font-weight="700" fill="#172033">2026 ドラム式洗濯乾燥機</text>
+  <text x="768" y="258" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#526071">3社を「乾燥量・時間・電力量」で比較</text>
+
+  <g transform="translate(210 350)">
+    <rect width="300" height="370" rx="28" fill="#eef3f8"/>
+    <rect x="58" y="38" width="184" height="232" rx="22" fill="#d8e0e8" stroke="#8190a3" stroke-width="4"/>
+    <circle cx="150" cy="154" r="67" fill="#f9fbfd" stroke="#4b5d73" stroke-width="8"/>
+    <circle cx="150" cy="154" r="44" fill="#d8eef8"/>
+    <rect x="88" y="292" width="124" height="10" rx="5" fill="#a8b4c2"/>
+    <text x="150" y="337" text-anchor="middle" font-family="system-ui, sans-serif" font-size="27" font-weight="700" fill="#172033">Panasonic</text>
+    <text x="150" y="366" text-anchor="middle" font-family="system-ui, sans-serif" font-size="21" fill="#526071">6kg / 約800Wh</text>
+  </g>
+
+  <g transform="translate(618 350)">
+    <rect width="300" height="370" rx="28" fill="#eef3f8"/>
+    <rect x="58" y="38" width="184" height="232" rx="22" fill="#d8e0e8" stroke="#8190a3" stroke-width="4"/>
+    <circle cx="150" cy="154" r="67" fill="#f9fbfd" stroke="#4b5d73" stroke-width="8"/>
+    <circle cx="150" cy="154" r="44" fill="#d9e8ff"/>
+    <rect x="88" y="292" width="124" height="10" rx="5" fill="#a8b4c2"/>
+    <text x="150" y="337" text-anchor="middle" font-family="system-ui, sans-serif" font-size="27" font-weight="700" fill="#172033">HITACHI</text>
+    <text x="150" y="366" text-anchor="middle" font-family="system-ui, sans-serif" font-size="21" fill="#526071">7kg / 約93分</text>
+  </g>
+
+  <g transform="translate(1026 350)">
+    <rect width="300" height="370" rx="28" fill="#eef3f8"/>
+    <rect x="58" y="38" width="184" height="232" rx="22" fill="#d8e0e8" stroke="#8190a3" stroke-width="4"/>
+    <circle cx="150" cy="154" r="67" fill="#f9fbfd" stroke="#4b5d73" stroke-width="8"/>
+    <circle cx="150" cy="154" r="44" fill="#e2e7ff"/>
+    <rect x="88" y="292" width="124" height="10" rx="5" fill="#a8b4c2"/>
+    <text x="150" y="337" text-anchor="middle" font-family="system-ui, sans-serif" font-size="27" font-weight="700" fill="#172033">TOSHIBA</text>
+    <text x="150" y="366" text-anchor="middle" font-family="system-ui, sans-serif" font-size="21" fill="#526071">7kg / 約87分</text>
+  </g>
+
+  <g transform="translate(285 780)">
+    <rect width="966" height="72" rx="36" fill="#18263a"/>
+    <text x="483" y="47" text-anchor="middle" font-family="system-ui, sans-serif" font-size="27" font-weight="700" fill="#ffffff">省エネ・大容量・時短　どこを優先する？</text>
+  </g>
+</svg>
