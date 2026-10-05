@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<defs><linearGradient id="bg" x1="0" x2="1"><stop offset="0" stop-color="#fff7ed"/><stop offset="1" stop-color="#f0fdf4"/></linearGradient></defs>
+<rect width="1200" height="630" fill="url(#bg)"/>
+<text x="600" y="72" text-anchor="middle" font-family="system-ui,sans-serif" font-size="52" font-weight="900" fill="#10213b">Claude Code と dots</text>
+<text x="600" y="118" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="800" fill="#475569">作れるけど大変。dotsは始めやすい</text>
+<rect x="60" y="160" width="510" height="355" rx="34" fill="#fff1e5" stroke="#f97316" stroke-width="4"/>
+<rect x="630" y="160" width="510" height="355" rx="34" fill="#eafbea" stroke="#16a34a" stroke-width="4"/>
+<text x="315" y="225" text-anchor="middle" font-family="system-ui,sans-serif" font-size="42" font-weight="900" fill="#ea580c">Claude Code</text>
+<text x="885" y="225" text-anchor="middle" font-family="system-ui,sans-serif" font-size="42" font-weight="900" fill="#15803d">dots</text>
+<g font-family="system-ui,sans-serif" fill="#172033" font-size="25" font-weight="700">
+<text x="100" y="295">🧩 MCP / API連携を自分で組む</text>
+<text x="100" y="345">🔐 権限・状態管理を設計する</text>
+<text x="100" y="395">⏰ 定期実行や再開も設計できる</text>
+<text x="100" y="445">🛠️ 自由度が高く、深く作り込める</text>
+<text x="670" y="295">👤 役割を渡す</text>
+<text x="670" y="345">🔗 サービスを接続する</text>
+<text x="670" y="395">⚡ すぐ仕事を始めやすい</text>
+<text x="670" y="445">📈 継続して業務を回しやすい</text>
+</g>
+<rect x="90" y="540" width="1020" height="64" rx="24" fill="#fff7cc" stroke="#fbbf24" stroke-width="2"/>
+<text x="600" y="582" text-anchor="middle" font-family="system-ui,sans-serif" font-size="30" font-weight="900" fill="#172033">Claude Code = 自作で強い ／ dots = すぐ始めやすい</text>
+</svg>
