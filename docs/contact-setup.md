@@ -132,6 +132,10 @@ ChatGPTの「カスタムMCPアプリを作成」画面で、以下のように�
 **オーナーシークレット**の入力を求められる。正しく入力すると、ChatGPT側に
 access token / refresh token が発行され、以後はこのトークンで自動接続される。
 
+同じMCPサーバー・同じOAuth認証に、記事のアイキャッチをChatGPTから直接取り込む
+`publish_generated_image` toolも追加されている。セットアップ（追加で必要なGitHub Secret等）
+は [docs/mcp-cover-publish.md](./mcp-cover-publish.md) を参照。
+
 技術詳細:
 - Protected Resource Metadata: `GET /.well-known/oauth-protected-resource` (RFC 9728)
 - Authorization Server Metadata: `GET /.well-known/oauth-authorization-server` (RFC 8414)

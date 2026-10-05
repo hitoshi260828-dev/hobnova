@@ -6,6 +6,7 @@ tags: ["タイムズカー", "カーシェア", "維持費比較"]
 draft: false
 featured: false
 toolId: "times-car-break-even"
+image: "./times-car-break-even-simulator-hero.png"
 ---
 
 ## このツールについて

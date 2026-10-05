@@ -2,6 +2,8 @@ import type { Env } from '../_lib/types';
 import { CONTACT_STATUSES, toPublicContact, type ContactStatus } from '../_lib/types';
 import { listContacts, getContactById, updateContactStatus } from '../_lib/db';
 import { issuerFromRequest, mcpResource, protectedResourceMetadataUrl, validateAccessToken } from '../_lib/oauth';
+import { publishCover, type PublishCoverArgs } from '../_lib/cover-publish';
+import { ALLOWED_IMAGE_MIME_TYPES } from '../_lib/image-validate';
 
 // MCP Streamable HTTP transport（単一エンドポイント、ステートレス実装）。
 // セッション管理(Mcp-Session-Id)は必須ではないため実装せず、リクエストごとに完結させる。
@@ -70,6 +72,42 @@ const TOOLS = [
       required: ['id', 'status'],
     },
   },
+  {
+    name: 'publish_generated_image',
+    description:
+      'ChatGPTで生成・選択した画像を、HOBNOVAの記事/DATA LAB/TOOLSのcover（アイキャッチ）として取り込み、' +
+      'main直接commitではなくPull Requestとして提案する。既存coverがある記事はreplace=trueを明示しない限り拒否する。' +
+      'dry_run=trueで実際の書き込み・PR作成なしに計画だけを確認できる。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        article_path: {
+          type: 'string',
+          description:
+            '対象記事のリポジトリ内パス（例: src/content/articles/laptop-buying-guide.md）。' +
+            'src/content/articles|data-lab|tools 配下の.md/.mdxのみ許可。',
+        },
+        image: {
+          type: 'object',
+          description:
+            '添付画像。ChatGPT側で「添付画像をツールへ送る」設定を有効にしている場合、会話内の画像が自動的にここへ入る。',
+          properties: {
+            data: {
+              type: 'string',
+              description: 'base64エンコードされた画像データ（data:image/png;base64,... 形式も可）',
+            },
+            mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES },
+          },
+          required: ['data'],
+        },
+        type: { type: 'string', enum: ['cover'], description: '現在はcoverのみ対応（将来inline対応予定）。' },
+        alt: { type: 'string', description: '代替テキスト（省略可）。' },
+        replace: { type: 'boolean', description: '既存coverを置き換える場合のみtrueを指定する。既定はfalse。' },
+        dry_run: { type: 'boolean', description: 'trueの場合、GitHubへの書き込み・PR作成を行わず計画のみ返す。' },
+      },
+      required: ['article_path', 'image'],
+    },
+  },
 ] as const;
 
 function toolTextResult(data: unknown, isError = false) {
@@ -110,6 +148,10 @@ async function callTool(env: Env, name: string, args: Record<string, unknown>) {
       await updateContactStatus(env.CONTACTS_DB, id, status as ContactStatus);
       const updated = await getContactById(env.CONTACTS_DB, id);
       return toolTextResult({ contact: toPublicContact(updated!) });
+    }
+    case 'publish_generated_image': {
+      const result = await publishCover(env, args as PublishCoverArgs);
+      return toolTextResult(result, result.status === 'error');
     }
     default:
       return toolTextResult({ error: 'unknown_tool' }, true);
