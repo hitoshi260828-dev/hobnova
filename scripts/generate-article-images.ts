@@ -4,28 +4,12 @@
 //
 // Usage:
 //   npm run images:generate -- path/to/article.md [--dry-run] [--force] [--cover-only] [--inline-only]
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  ensureDir,
-  hasExistingCover,
-  hasExistingInlineImages,
-  loadArticleFile,
-  publicInlineImageDir,
-  writeArticleFile,
-  type ArticleFile,
-} from './lib/image-pipeline/article-file';
+import { hasExistingCover, hasExistingInlineImages, loadArticleFile, type ArticleFile } from './lib/image-pipeline/article-file';
 import { buildImagePlan } from './lib/image-pipeline/plan';
-import { generateCoverImage, resolveOpenAiImageModel } from './lib/image-pipeline/openai-cover';
-import {
-  generateInlineImage,
-  resolveCloudflareImageGuidance,
-  resolveCloudflareImageModel,
-  resolveCloudflareImageSteps,
-} from './lib/image-pipeline/cloudflare-inline';
-import { insertInlineImages } from './lib/image-pipeline/markdown-insert';
+import { runImageGenerationPlan } from './lib/image-pipeline/run-image-generation';
 import { parseArgs } from './lib/image-pipeline/cli-args';
 import type { PlanItem } from './lib/image-pipeline/types';
 
@@ -88,80 +72,28 @@ async function main() {
     return;
   }
 
-  let coverSucceeded = false;
+  const result = await runImageGenerationPlan(article, REPO_ROOT, plan);
 
-  if (plan.coverItem) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      console.warn('[WARN] OPENAI_API_KEY が未設定のため、アイキャッチ生成をスキップします。');
-    } else {
-      try {
-        const model = resolveOpenAiImageModel();
-        const { buffer, ext } = await generateCoverImage(plan.coverItem.prompt, { apiKey, model });
-        const targetPath = plan.coverItem.targetPath.replace(/\.png$/, `.${ext}`);
-        fs.writeFileSync(targetPath, buffer);
-        article.data.image = `./${path.basename(targetPath)}`;
-        coverSucceeded = true;
-        console.log(`[cover] 生成成功: ${targetPath}`);
-      } catch (err) {
-        console.warn(`[WARN] アイキャッチ生成に失敗しました（本文画像生成は続行します）: ${(err as Error).message}`);
+  if (result.cover.status === 'success') {
+    console.log(`[cover] 生成成功: ${result.cover.targetPath}`);
+  } else if (result.cover.status === 'failed' && result.cover.error) {
+    console.warn(`[WARN] アイキャッチ生成に失敗しました（本文画像生成は続行します）: ${result.cover.error}`);
+  }
+
+  if (result.inline.reason) {
+    // 全件共通の理由（認証情報未設定等）は1行だけ表示する（outcomes分の重複表示を避ける）。
+    console.warn(`[WARN] 本文画像生成をスキップしました: ${result.inline.reason}`);
+  } else {
+    for (const outcome of result.inline.outcomes) {
+      if (outcome.status === 'success') {
+        console.log(`[inline] 生成成功: "${outcome.heading}" -> ${outcome.targetPath}`);
+      } else {
+        console.warn(`[WARN] 本文画像の生成に失敗しました（"${outcome.heading}"、他の画像生成は続行します）: ${outcome.error}`);
       }
     }
   }
 
-  const insertions: Array<{ headingEndIndex: number; alt: string; referencePath: string }> = [];
-
-  if (plan.inlineItems.length > 0) {
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-    const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-
-    if (!accountId || !apiToken) {
-      console.warn('[WARN] CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN が未設定のため、本文画像生成をスキップします。');
-    } else {
-      const model = resolveCloudflareImageModel();
-      const guidance = resolveCloudflareImageGuidance();
-      const steps = resolveCloudflareImageSteps();
-      const inlineDir = publicInlineImageDir(REPO_ROOT, article.slug);
-      ensureDir(inlineDir);
-
-      for (let i = 0; i < plan.inlineItems.length; i++) {
-        const item = plan.inlineItems[i];
-        const selected = plan.selectedSections[i];
-        try {
-          const { buffer, ext } = await generateInlineImage(item.prompt, {
-            accountId,
-            apiToken,
-            model,
-            width: 1024,
-            height: 1024,
-            guidance,
-            steps,
-          });
-          const fileName = path.basename(item.targetPath).replace(/\.jpg$/, `.${ext}`);
-          const absoluteTarget = path.join(inlineDir, fileName);
-          fs.writeFileSync(absoluteTarget, buffer);
-
-          const referencePath = `/images/articles/${article.slug}/${fileName}`;
-          insertions.push({
-            headingEndIndex: selected.section.headingEndIndex,
-            alt: item.alt ?? '',
-            referencePath,
-          });
-          console.log(`[inline] 生成成功: "${item.heading}" -> ${absoluteTarget}`);
-        } catch (err) {
-          console.warn(`[WARN] 本文画像の生成に失敗しました（"${item.heading}"、他の画像生成は続行します）: ${(err as Error).message}`);
-        }
-      }
-    }
-  }
-
-  // Markdown更新は、生成が成功したものだけを反映する。
-  if (insertions.length > 0) {
-    article.body = insertInlineImages(article.body, insertions);
-  }
-
-  if (coverSucceeded || insertions.length > 0) {
-    writeArticleFile(article);
+  if (result.articleUpdated) {
     console.log(`\n記事ファイルを更新しました: ${article.absolutePath}`);
   } else {
     console.log('\n生成に成功した画像がなかったため、記事ファイルは変更していません。');
