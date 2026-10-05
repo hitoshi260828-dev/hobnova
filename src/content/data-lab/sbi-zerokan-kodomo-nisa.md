@@ -3,7 +3,7 @@ title: "SBIの「ゼロカン」ってどうなの？信託報酬0%の魅力と�
 description: "2026年11月17日設定予定のSBI・ゼロ・オールカントリー・インデックス・ファンド（ゼロカン）を、eMAXIS Slim オルカン、楽天・プラス、新SBIオルカン、SBI雪だるまと比較。こどもNISAで月5万円を10年積み立て、その後8年保有した場合の差も試算します。"
 publishDate: 2026-10-05
 tags: ["ゼロカン", "こどもNISA", "オルカン", "SBI証券", "投資信託"]
-draft: true
+draft: false
 featured: false
 author: "HOBNOVA編集部"
 source: "SBIグループ、各運用会社・証券会社の公開情報（2026年10月5日確認）"
