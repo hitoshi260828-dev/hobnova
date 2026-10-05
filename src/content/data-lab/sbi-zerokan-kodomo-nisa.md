@@ -14,6 +14,7 @@ stats:
     value: "2026年11月17日"
   - label: "こどもNISA上限"
     value: "年60万円・総額600万円"
+image: "./sbi-zerokan-kodomo-nisa-hero.webp"
 ---
 
 「信託報酬0%」。
