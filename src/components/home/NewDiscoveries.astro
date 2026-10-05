@@ -7,9 +7,33 @@ import ImagePlaceholder from '../ui/ImagePlaceholder.astro';
 import { CATEGORIES } from '../../consts';
 import { formatDate } from '../../lib/format';
 
-const articles = await getCollection('articles', ({ data }) => !data.draft);
-const latest = articles
-  .sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf())
+const [articles, dataLab, tools] = await Promise.all([
+  getCollection('articles', ({ data }) => !data.draft),
+  getCollection('dataLab', ({ data }) => !data.draft),
+  getCollection('tools', ({ data }) => !data.draft),
+]);
+
+const latest = [
+  ...articles.map((entry) => ({
+    entry,
+    type: 'article' as const,
+    href: `${CATEGORIES.find((c) => c.id === entry.data.category)?.href ?? '/'}${entry.id}/`,
+    badge: CATEGORIES.find((c) => c.id === entry.data.category)?.labelEn ?? 'ARTICLE',
+  })),
+  ...dataLab.map((entry) => ({
+    entry,
+    type: 'dataLab' as const,
+    href: `/data-lab/${entry.id}/`,
+    badge: 'DATA LAB',
+  })),
+  ...tools.map((entry) => ({
+    entry,
+    type: 'tool' as const,
+    href: `/tools/${entry.id}/`,
+    badge: 'TOOLS',
+  })),
+]
+  .sort((a, b) => b.entry.data.publishDate.valueOf() - a.entry.data.publishDate.valueOf())
   .slice(0, 4);
 ---
 
@@ -18,23 +42,20 @@ const latest = articles
 
   <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
     {
-      latest.map((entry) => {
-        const category = CATEGORIES.find((c) => c.id === entry.data.category);
-        return (
-          <Card href={`${category?.href}${entry.id}/`}>
-            <ImagePlaceholder
-              slot="media"
-              image={entry.data.image}
-              alt={entry.data.title}
-              aspect="aspect-[16/10]"
-            />
-            {category && <Badge>{category.labelEn}</Badge>}
-            <h3 class="mt-3 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h3>
-            <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
-            <p class="mt-4 text-xs text-charcoal/50">{formatDate(entry.data.publishDate)}</p>
-          </Card>
-        );
-      })
+      latest.map(({ entry, href, badge }) => (
+        <Card href={href}>
+          <ImagePlaceholder
+            slot="media"
+            image={entry.data.image}
+            alt={entry.data.title}
+            aspect="aspect-[16/10]"
+          />
+          <Badge>{badge}</Badge>
+          <h3 class="mt-3 line-clamp-2 text-base font-semibold text-navy">{entry.data.title}</h3>
+          <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{entry.data.description}</p>
+          <p class="mt-4 text-xs text-charcoal/50">{formatDate(entry.data.publishDate)}</p>
+        </Card>
+      ))
     }
   </div>
 </section>
