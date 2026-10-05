@@ -6,7 +6,7 @@ category: "gadget"
 tags: ["スマートホーム", "Matter", "Thread", "IoT"]
 draft: false
 featured: false
-image: "./matter-thread-guide-2026-hero.svg"
+image: "./matter-thread-guide-2026-hero.webp"
 ---
 
 スマートホーム機器を見ていると、最近よく目に入る「Matter対応」「Thread対応」の文字。
