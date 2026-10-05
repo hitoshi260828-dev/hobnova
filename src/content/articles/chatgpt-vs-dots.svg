@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+<rect width="1200" height="675" fill="#f8fafc"/>
+<text x="600" y="65" text-anchor="middle" font-family="system-ui,sans-serif" font-size="46" font-weight="800" fill="#0f172a">ChatGPT と dots の違い</text>
+<rect x="45" y="110" width="520" height="500" rx="34" fill="#eaf4ff" stroke="#60a5fa" stroke-width="3"/>
+<rect x="635" y="110" width="520" height="500" rx="34" fill="#eefbf2" stroke="#4ade80" stroke-width="3"/>
+<rect x="80" y="140" width="450" height="72" rx="28" fill="#2563eb"/><text x="305" y="190" text-anchor="middle" font-family="system-ui,sans-serif" font-size="42" font-weight="800" fill="white">ChatGPT</text>
+<rect x="670" y="140" width="450" height="72" rx="28" fill="#16a34a"/><text x="895" y="190" text-anchor="middle" font-family="system-ui,sans-serif" font-size="42" font-weight="800" fill="white">dots</text>
+<circle cx="600" cy="340" r="50" fill="#334155"/><text x="600" y="354" text-anchor="middle" font-family="system-ui,sans-serif" font-size="32" font-weight="800" fill="white">VS</text>
+<g font-family="system-ui,sans-serif" fill="#0f172a">
+<text x="110" y="275" font-size="28" font-weight="700">💬 話しかけた時に答える</text>
+<text x="110" y="345" font-size="28" font-weight="700">📝 相談・整理・文章作成</text>
+<text x="110" y="415" font-size="28" font-weight="700">👥 会話中心で使う</text>
+<text x="705" y="275" font-size="28" font-weight="700">⚙️ 役割を持って継続的に動く</text>
+<text x="705" y="345" font-size="28" font-weight="700">📅 予定・情報・作業を進める</text>
+<text x="705" y="415" font-size="28" font-weight="700">🧑‍💼 担当者のように使う</text>
+</g>
+<rect x="90" y="485" width="430" height="86" rx="24" fill="#1d4ed8"/><text x="305" y="540" text-anchor="middle" font-family="system-ui,sans-serif" font-size="31" font-weight="800" fill="white">その場で助けるAI</text>
+<rect x="680" y="485" width="430" height="86" rx="24" fill="#15803d"/><text x="895" y="540" text-anchor="middle" font-family="system-ui,sans-serif" font-size="31" font-weight="800" fill="white">仕事を持ち続けるAI</text>
+<text x="600" y="650" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="800" fill="#334155">ChatGPT = 会話で助ける ／ dots = 継続して仕事を進める</text>
+</svg>
