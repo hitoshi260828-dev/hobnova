@@ -9,18 +9,11 @@ draft: false
 featured: false
 ---
 
-Core Web Vitalsを改善するとき、PageSpeed Insightsの総合点を100に近づけることから始める必要はありません。先に見るべきなのは、**実際の訪問者データでLCP・INP・CLSのどれが基準を外しているか**です。そのうえで、基準を外したURL群の共通原因から直すのが最短ルートです。
+サイト改善を始めると、LCP、INP、CLSとアルファベットが一気に増えます。数字が赤いと直したくなりますが、すべてを同じ熱量で追いかけると、肝心の「読んでいて気持ちいいか」が置いていかれがちです。
 
-2026年9月20日時点で、Googleが示す「良好」の目安は次の3つです。
+ページを開いた瞬間に大きな画像がすっと出る。ボタンを押したら間を置かず反応する。読んでいる途中で文字がガクッとずれない。Core Web Vitalsが見ているのは、結局そういう体感です。
 
-| 指標 | 何を測るか | 「良好」の目安 |
-|---|---|---:|
-| LCP | 主なコンテンツが表示される速さ | 2.5秒以下 |
-| INP | 操作してから画面が反応するまで | 200ミリ秒以下 |
-| CLS | 表示中にレイアウトがずれる度合い | 0.1以下 |
-
-基準値は[Google Search CentralのCore Web Vitals解説](https://developers.google.com/search/docs/appearance/core-web-vitals)で確認しました。この記事では、実機計測を行った体験談ではなく、Googleの公式資料をもとにした調査・整理として、改善の順番を具体化します。
-
+この記事では、指標の定義だけでなく、**どこから直すと体感改善につながりやすいか**という優先順位で整理します。
 ## 結論：優先順位は「不良URLの多さ×影響範囲×直しやすさ」で決める
 
 3指標に固定の優先順位はありません。まずSearch ConsoleのCore Web Vitalsレポートで「不良」または「改善が必要」なURL群を確認し、次の順で着手候補を並べます。
@@ -146,3 +139,8 @@ Core Web Vitals改善の出発点は、100点を目指すことではありま�
 - [Understanding Core Web Vitals and Google search results（Google Search Central）](https://developers.google.com/search/docs/appearance/core-web-vitals)（2026年9月20日確認）
 - [About PageSpeed Insights（Google for Developers）](https://developers.google.com/speed/docs/insights/v5/about)（2026年9月20日確認）
 - [Core Web Vitalsレポート（Search Consoleヘルプ）](https://support.google.com/webmasters/answer/9205520?hl=ja)（2026年9月20日確認）
+
+## HOBNOVAの見方
+
+スコアを100点にすることが目的ではありません。読者がページを開いたときに「重いな」と感じず、触ったものが素直に動き、文章を邪魔されずに読めること。その体感が先で、指標はあとから付いてくるものとして扱う方が、改善の優先順位を決めやすくなります。
+
