@@ -4,7 +4,7 @@ description: "ドラム式洗濯乾燥機は故障しやすい・洗浄力が低
 publishDate: 2026-10-04
 category: "gadget"
 tags: ["ドラム式洗濯乾燥機", "洗濯機", "家電比較", "省エネ"]
-image: "./drum-washer-2026-comparison-hero.svg"
+image: "./drum-washer-2026-comparison-hero.png"
 draft: false
 featured: false
 ---
