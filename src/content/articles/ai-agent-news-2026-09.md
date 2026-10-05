@@ -9,16 +9,9 @@ draft: false
 featured: false
 ---
 
-2026年9月、AIエージェントを巡る競争は「賢いモデルを作る」だけの段階から、**長時間仕事を任せられる実行基盤、他のエージェントやツールとの接続、そして暴走を防ぐ仕組みをどう作るか**という段階へ進んでいます。
+AIエージェントのニュースは、追いかけ始めると本当に速いです。昨日まで「実験的な機能」だったものが、翌週には仕事の流れに入り込んでいる。タブを閉じた直後に、また新しい発表が出る――そんな速度感があります。
 
-この1か月のニュースを追うと、特に重要なのは次の3つです。
-
-1. OpenAIがクラウドエージェントを構築・実行する「Agents API」を公開
-2. MCPやA2Aなど、ベンダーをまたぐエージェント接続の標準化が進展
-3. 自律性が高まるほど重要になる「監視・権限管理・安全性」が製品機能になり始めた
-
-単なるチャットボットの進化というより、**AIがPCやクラウド上で実際に仕事を進めるためのインフラ整備が一気に進んでいる**と見ると、現在地が分かりやすくなります。
-
+だからこそ、ニュースをただ時系列に並べても、数週間後には読みにくくなります。HOBNOVAでは「何が発表されたか」より、**それで何ができるようになったのか、実務のどこが変わりそうか**を軸に2026年9月の動きを整理しました。
 ## OpenAIがAgents APIを公開。エージェント開発が「APIを呼ぶ」世界へ
 
 OpenAIは2026年9月10日、**Agents APIのパブリックベータ**を発表しました。
@@ -126,3 +119,8 @@ Agents APIのような実行基盤、MCP・A2Aのような接続標準、Agent A
 - [Google Developers Blog：Agent Anomaly Detection](https://developers.googleblog.com/agent-anomaly-detection-now-in-private-preview-on-the-gemini-enterprise-agent-platform/)（2026年9月20日確認）
 - [Linux Foundation：MCPA Certification](https://www.linuxfoundation.org/press/agentic-ai-foundation-launches-mcpa-certification-to-validate-mcp-expertise)（2026年9月20日確認）
 - [Anthropic：Detecting and countering misuse of AI: September 2026](https://www.anthropic.com/threat-intelligence-report-september-2026)（2026年9月20日確認）
+
+## HOBNOVAの見方
+
+AIエージェントの変化は速いので、全部を追う必要はありません。自分の仕事や生活の中で「ここ、毎回面倒なんだよな」と感じる場所に効く変化だけ拾う。そのくらいの距離感の方が、ニュース疲れせずに使いこなせると思います。
+
