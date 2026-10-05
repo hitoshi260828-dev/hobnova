@@ -70,15 +70,101 @@ function base64UrlEncode(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function pemToPkcs8(pem: string): ArrayBuffer {
-  const base64 = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/, '')
-    .replace(/-----END PRIVATE KEY-----/, '')
-    .replace(/\s+/g, '');
+// --- PEM → PKCS#8 DER 変換 ---
+//
+// crypto.subtle.importKey('pkcs8', ...) はPKCS#8形式のDERしか受け付けない。
+// GitHub AppのPrivate key発行画面はPKCS#1（`BEGIN RSA PRIVATE KEY`）形式のPEMを
+// 配布するため、ヘッダーを剥がすだけでは不正なDERをimportKeyへ渡すことになり
+// （PKCS#1 DERの先頭はPKCS#8のSEQUENCE構造と噛み合わないため）、importKeyが
+// 「invalid base64」ではなく別のタイミングで必ず失敗する。PKCS#1は
+// PKCS#8（PrivateKeyInfo = SEQUENCE { version, rsaEncryptionのAlgorithmIdentifier,
+// OCTET STRING { 元のPKCS#1 DER } }）へASN.1構造として正しく包み直してから渡す。
+
+const PKCS8_LABEL = 'PRIVATE KEY';
+const PKCS1_RSA_LABEL = 'RSA PRIVATE KEY';
+
+// SEQUENCE { OID 1.2.840.113549.1.1.1 (rsaEncryption), NULL } の固定DERバイト列。
+const RSA_ENCRYPTION_ALGORITHM_IDENTIFIER = new Uint8Array([
+  0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00,
+]);
+
+function derLength(length: number): number[] {
+  if (length < 0x80) return [length];
+  const bytes: number[] = [];
+  let n = length;
+  while (n > 0) {
+    bytes.unshift(n & 0xff);
+    n >>>= 8;
+  }
+  return [0x80 | bytes.length, ...bytes];
+}
+
+function concatBytes(...parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, p) => sum + p.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+function derSequence(contents: Uint8Array): Uint8Array {
+  return concatBytes(new Uint8Array([0x30, ...derLength(contents.length)]), contents);
+}
+
+function derOctetString(contents: Uint8Array): Uint8Array {
+  return concatBytes(new Uint8Array([0x04, ...derLength(contents.length)]), contents);
+}
+
+// version INTEGER 0（PKCS#8のPrivateKeyInfo.versionは常に0）。
+const DER_INTEGER_ZERO = new Uint8Array([0x02, 0x01, 0x00]);
+
+/** PKCS#1（RSAPrivateKey）のDERを、PKCS#8（PrivateKeyInfo）のDERへ包み直す。 */
+function pkcs1DerToPkcs8Der(pkcs1Der: Uint8Array): Uint8Array {
+  const body = concatBytes(DER_INTEGER_ZERO, RSA_ENCRYPTION_ALGORITHM_IDENTIFIER, derOctetString(pkcs1Der));
+  return derSequence(body);
+}
+
+function base64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
+  return bytes;
+}
+
+/**
+ * PKCS#8（`BEGIN PRIVATE KEY`）・PKCS#1（`BEGIN RSA PRIVATE KEY`）いずれのPEMも
+ * crypto.subtle.importKey('pkcs8', ...) へ渡せるPKCS#8 DERへ変換する。
+ * 鍵の値そのものは例外メッセージへ一切含めない（ラベル名などのメタ情報のみ）。
+ */
+function pemToPkcs8(pem: string): ArrayBuffer {
+  const match = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/.exec(pem.trim());
+  if (!match) {
+    throw new Error('malformed GitHub App private key PEM (missing BEGIN/END markers)');
+  }
+
+  const label = match[1].trim();
+  const base64 = match[2].replace(/\s+/g, '');
+  if (base64.length === 0) {
+    throw new Error('malformed GitHub App private key PEM (empty body)');
+  }
+
+  let bytes: Uint8Array;
+  try {
+    bytes = base64ToBytes(base64);
+  } catch {
+    throw new Error('malformed GitHub App private key PEM (invalid base64)');
+  }
+
+  if (label === PKCS8_LABEL) {
+    return bytes.buffer as ArrayBuffer;
+  }
+  if (label === PKCS1_RSA_LABEL) {
+    return pkcs1DerToPkcs8Der(bytes).buffer as ArrayBuffer;
+  }
+  throw new Error(`unsupported GitHub App private key PEM format: ${label}`);
 }
 
 /** GitHub App識別用のJWT（RS256、10分間有効）を署名する。 */
