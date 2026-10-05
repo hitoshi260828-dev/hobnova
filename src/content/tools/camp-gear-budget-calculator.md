@@ -1,11 +1,14 @@
 ---
-title: "キャンプギア予算計算機"
-description: "揃えたい装備を選ぶだけで、初期投資の概算予算を計算できるツールです。"
-publishDate: 2026-08-02
-tags: ["キャンプ", "計算ツール"]
+title: キャンプギア予算計算機
+description: 揃えたい装備を選ぶだけで、初期投資の概算予算を計算できるツールです。
+publishDate: 2026-08-02T00:00:00.000Z
+tags:
+  - キャンプ
+  - 計算ツール
 draft: false
 featured: false
-toolId: "camp-budget"
+toolId: camp-budget
+image: ./camp-gear-budget-calculator-hero.png
 ---
 
 ## このツールについて
