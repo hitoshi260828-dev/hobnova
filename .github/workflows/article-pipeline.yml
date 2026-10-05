@@ -1,0 +1,81 @@
+name: Article image pipeline
+
+# 記事Markdownが確定した後に、画像生成（OpenAI cover + Cloudflare inline）・astro check・
+# buildを手動実行するためのworkflow。
+#
+# 注記: このリポジトリには「毎日12時に記事を生成するcron/automation」はこれまで存在しない。
+# 記事そのものの執筆・PR作成は、リポジトリ外側（Codex Cloud等の外部AIエージェント、または
+# ローカルのClaude Code）で人間の依頼を起点に行われている（docs/ai-article-guidelines.md 参照）。
+# そのため、ここでは無理にcronの日次公開workflowを新設せず、記事Markdownが確定した後に
+# 手動（workflow_dispatch）で画像生成〜checkまでを実行できる統合ポイントのみを追加する。
+# mainへの直接commit・PR作成・mergeはこのworkflowでは行わない。
+on:
+  workflow_dispatch:
+    inputs:
+      article_path:
+        description: "画像生成対象の記事ファイルパス（例: src/content/articles/xxxx.md）"
+        required: true
+        type: string
+      dry_run:
+        description: "trueにすると実API呼び出し・ファイル書き換えを行わず、生成計画のみ表示する"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  run-pipeline:
+    name: article:pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      # article:pipeline は内部で画像生成 → astro check → build → git status確認までを
+      # 1本で実行する（scripts/lib/image-pipeline/daily-pipeline.ts）。astro check / build は
+      # 失敗しても処理を止めずレポートするベストエフォート設計だが、いずれかが失敗した場合は
+      # このステップ自体を非ゼロ終了コードにして、このjobを失敗として報告する。
+      - name: Run article image pipeline
+        env:
+          # inputs.* をrun:シェル内へ直接展開すると、article_pathの値次第でシェル注入が
+          # 成立してしまう（GitHub Actionsの既知のアンチパターン）。env経由で渡し、
+          # シェル側は変数展開のみでクォートして使う。
+          ARTICLE_PATH: ${{ inputs.article_path }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_IMAGE_MODEL: ${{ vars.CLOUDFLARE_IMAGE_MODEL }}
+          CLOUDFLARE_IMAGE_STEPS: ${{ vars.CLOUDFLARE_IMAGE_STEPS }}
+          CLOUDFLARE_IMAGE_GUIDANCE: ${{ vars.CLOUDFLARE_IMAGE_GUIDANCE }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            npm run article:pipeline -- "$ARTICLE_PATH" --dry-run
+          else
+            npm run article:pipeline -- "$ARTICLE_PATH"
+          fi
+
+      - name: Show changed files
+        if: always()
+        run: git status --short
+
+  # 重要:
+  # - mainへの直接commitはしない（このworkflowにはcontents: writeもgit push/commitの
+  #   ステップも無い）。
+  # - PRの作成もここでは行わない。生成された画像・frontmatter/Markdownの変更はこのjobの
+  #   実行環境（ephemeral runner）内にのみ存在し、人間またはPRを作成する側のエージェントが
+  #   既存の運用（docs/ai-article-guidelines.md 9章）に従って別途ブランチへ反映・PR作成する
+  #   想定。将来、記事の自動コミット・PR作成まで含めたい場合は、別途
+  #   peter-evans/create-pull-request 等を使う追加ステップの設計を検討する（今回は未実装）。

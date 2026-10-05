@@ -8,6 +8,98 @@ HOBNOVAの記事画像には2つの入手経路があり、どちらも同じ保
 - `scripts/import-generated-image.ts`: ChatGPT等で**既に生成済みのローカル画像ファイルを
   取り込む**（API呼び出しなし）
 
+この2つに加えて、記事Markdown確定後に画像生成からastro check/buildまでを1本で実行する
+`scripts/run-daily-article-pipeline.ts`（`npm run article:pipeline`）がある。詳細は
+「記事生成フローへの統合（article:pipeline）」章を参照。
+
+## 記事生成フローへの統合（article:pipeline）
+
+### このリポジトリの実際の記事生成フロー
+
+このリポジトリには「毎日12時に記事を生成するcron/automation」は存在しない。記事の企画・
+調査・執筆・PR作成は、リポジトリ外側のAIエージェント（Codex Cloud等）またはローカルの
+Claude Codeが、人間の依頼を起点に行う（`AGENTS.md` → `docs/ai-article-guidelines.md`）。
+GitHub Actions側にあるのは、PRの型チェック/ビルド（`pr-check.yml`）と、そのPRが成功した
+ときのLINE通知（`article-ready-notification.yml`）のみで、記事そのものを生成する処理は
+リポジトリ内にはない。
+
+この前提のもと、`article:pipeline` は「記事Markdownが確定した後」に差し込む統合ポイント
+として追加した（無理に存在しないcron処理へ接続しない）。PRの作成自体は行わない。
+
+### 使い方
+
+```bash
+npm run article:pipeline -- src/content/articles/xxxx.md
+npm run article:pipeline -- src/content/articles/xxxx.md --dry-run
+npm run article:pipeline -- src/content/articles/xxxx.md --force
+npm run article:pipeline -- src/content/articles/xxxx.md --cover-only
+npm run article:pipeline -- src/content/articles/xxxx.md --inline-only
+```
+
+内部では次の順に実行する（`scripts/lib/image-pipeline/daily-pipeline.ts`）。
+
+1. 記事を読み込み、draftフラグを確認する（**draftは一切変更しない**。draft記事でも画像
+   生成自体は行う）
+2. `buildImagePlan` で生成計画を作る（`--dry-run` はここで打ち切り、計画のみ表示する）
+3. `runImageGenerationPlan`（`generate-article-images.ts`と共通のロジック）でcover/inline
+   画像を生成する。1枚の失敗が他の画像生成を止めない。画像生成が1件も成功しなくても記事
+   Markdownは変更しない
+4. 生成済み画像に対する品質チェック（`verifyCoverImage` / `verifyInlineImages`）:
+   - cover: ファイル存在・サイズ > 0・astro:assets対応拡張子
+   - inline: ファイル存在・サイズ > 0・本文からの参照の有無・二重挿入の検出
+5. `npx astro check` と `npm run build` を実行する。どちらかが失敗しても両方を実行し、
+   両方の結果をレポートする（ベストエフォート）
+6. 対象記事ファイル・inline画像ディレクトリに限定した `git status --short` を取得する
+
+最後に`[RESULT]`ブロックで cover/inline の結果、astro check/build の pass/fail、git statusを
+表示する。astro check / build のいずれかが失敗した場合は `PR: skipped` と表示し、
+プロセスをexit code 1で終了する（失敗していなければ `PR: ready` と表示するが、**PRの作成
+自体はこのスクリプトでは行わない**。既存の運用（後述）に従って人間またはPRを作成する側の
+エージェントが別途実行する）。
+
+### GitHub Actionsとの接続（手動実行）
+
+`.github/workflows/article-pipeline.yml` に `workflow_dispatch`（`article_path` 入力・
+`dry_run` 入力）を追加した。`checkout → setup node → npm ci → article:pipeline` を実行する
+手動実行専用のworkflowで、**mainへの直接commit・PR作成・mergeは行わない**。cronトリガーは
+意図的に追加していない（存在しない日次生成処理に無理に接続しないため）。
+
+実行には以下のGitHub Secretsが必要（未設定時は`runImageGenerationPlan`が該当する画像種別
+だけを明確な理由付きでスキップし、処理全体は止めない）。
+
+| 変数 | 種別 | 必須 |
+|---|---|---|
+| `OPENAI_API_KEY` | Secret | cover生成に必須 |
+| `OPENAI_IMAGE_MODEL` | Variable（任意） | 省略時は`gpt-image-1` |
+| `CLOUDFLARE_ACCOUNT_ID` | Secret | inline生成に必須 |
+| `CLOUDFLARE_API_TOKEN` | Secret | inline生成に必須 |
+| `CLOUDFLARE_IMAGE_MODEL` | Variable（任意） | 省略時は`@cf/black-forest-labs/flux-2-dev` |
+| `CLOUDFLARE_IMAGE_STEPS` | Variable（任意） | 省略時は`25` |
+| `CLOUDFLARE_IMAGE_GUIDANCE` | Variable（任意） | 省略時は未送信 |
+
+### 既存のPR運用・1日1記事ルールとの関係
+
+- 記事PRの作成・Preview確認・LINE通知・人間によるmainへの最終Mergeという既存フロー
+  （`docs/ai-article-guidelines.md` 9章）はそのまま維持する。`article:pipeline`は
+  「画像を含めてPRを作る準備が整った状態」を作るだけで、PR作成・Mergeの権限や手順を
+  変更しない
+- HOBNOVAの1日1記事公開ルールは、記事PRをいつmainへMergeするかという**人間の運用判断**
+  であり、リポジトリ内のコード（ワークフロー・スクリプト）としては実装されていない。
+  画像生成を自動化しても、PR作成数・Merge数そのものは変えない（画像生成の成功/失敗が
+  公開数に影響しないよう、`article:pipeline`はPR作成・Mergeを一切行わない設計にした）
+
+### Codex Cloud（既存の外部エージェント経路）とのバイナリ画像制約
+
+`docs/ai-article-guidelines.md` 6章に記載の通り、Codex CloudのPR作成経路はバイナリファイル
+を扱えないため、Codex Cloudが自動生成する記事画像は現在SVG（テキスト形式）に限定されている。
+`article:pipeline`（および`images:generate`/`images:import`）はPNG/JPEGなどのバイナリ画像を
+生成・保存するため、**Codex Cloudの実行環境からは使えない**。ローカル（Claude Code等、
+バイナリをコミットできる経路）での実行、またはこのリポジトリのGitHub Actions runner上での
+手動実行（`workflow_dispatch`）を前提とする。Codex Cloud側の記事生成フローとこの
+画像パイプラインをどう接続するか（例: Codex CloudがSVGで記事PRを作った後、人間が
+`article:pipeline`を手動実行してPNG/JPEGへ差し替える運用にするか）は、今回は実装せず、
+今後の運用判断として残した。
+
 ## images:import（外部生成画像の取り込み）
 
 ChatGPT上で対話しながら作った画像をローカルへ保存し、そのファイルをそのまま記事へ採用する
