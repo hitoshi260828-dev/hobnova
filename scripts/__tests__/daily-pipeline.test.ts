@@ -9,7 +9,7 @@ vi.mock('../lib/image-pipeline/run-image-generation', () => ({
   runImageGenerationPlan: runImageGenerationPlanMock,
 }));
 
-const { runDailyArticlePipeline } = await import('../lib/image-pipeline/daily-pipeline');
+const { runDailyArticlePipeline, resolveExecutable } = await import('../lib/image-pipeline/daily-pipeline');
 
 const SAMPLE_MARKDOWN = (draft: boolean) => `---
 title: "テスト記事"
@@ -36,6 +36,27 @@ const EMPTY_GENERATION_RESULT = {
   inline: { status: 'not-planned', succeeded: 0, failed: 0, outcomes: [] },
   articleUpdated: false,
 };
+
+describe('resolveExecutable', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('Windows上ではnpm/npxを.cmdへ変換する（execFileSyncはシェルを介さずバッチファイルを直接実行できないため）', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    expect(resolveExecutable('npm')).toBe('npm.cmd');
+    expect(resolveExecutable('npx')).toBe('npx.cmd');
+    expect(resolveExecutable('git')).toBe('git');
+  });
+
+  it('Windows以外では変換しない', () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    expect(resolveExecutable('npm')).toBe('npm');
+    expect(resolveExecutable('npx')).toBe('npx');
+  });
+});
 
 describe('runDailyArticlePipeline', () => {
   let tmpDir: string;
