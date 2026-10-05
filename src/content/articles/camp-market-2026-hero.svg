@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#F1EFE8"/>
+<path d="M0 690L230 520L390 635L610 390L850 620L1050 455L1320 650L1600 470V900H0Z" fill="#111"/>
+<g fill="none" stroke="#111" stroke-width="10">
+<path d="M180 390V175H760"/><path d="M180 390H830"/>
+<path d="M230 345L360 285L480 315L610 215L760 245"/>
+<circle cx="230" cy="345" r="13" fill="#111"/><circle cx="360" cy="285" r="13" fill="#111"/><circle cx="480" cy="315" r="13" fill="#111"/><circle cx="610" cy="215" r="13" fill="#111"/><circle cx="760" cy="245" r="13" fill="#111"/>
+</g>
+<g font-family="Arial, sans-serif" fill="#111">
+<text x="920" y="165" font-size="30" font-weight="700" letter-spacing="5">CAMP MARKET 2026</text>
+<text x="920" y="255" font-size="62" font-weight="800">ブーム後の</text>
+<text x="920" y="330" font-size="62" font-weight="800">キャンプ市場</text>
+<text x="925" y="390" font-size="26">1,757施設 × 稼働率16.3%</text>
+</g>
+<g transform="translate(1010 500)" fill="none" stroke="#F1EFE8" stroke-width="12">
+<path d="M0 150L120 0L240 150Z"/><path d="M120 0V150"/><path d="M65 150V105H175V150"/>
+</g>
+<text x="1260" y="815" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#F1EFE8" letter-spacing="4">HOBNOVA</text>
+</svg>
