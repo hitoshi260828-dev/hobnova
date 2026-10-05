@@ -36,8 +36,16 @@ export interface DailyPipelineResult {
   gitStatus: string | null;
 }
 
+// Windows上ではnpm/npxが.cmdバッチファイルのため、execFileSync（シェルを介さない）に
+// そのまま渡すとENOENTになる。.cmdを明示することでshell:trueを使わずに実行できる
+// （git等の実行ファイルはこの変換が不要なため対象を限定する）。
+export function resolveExecutable(command: string): string {
+  if (process.platform !== 'win32') return command;
+  return command === 'npm' || command === 'npx' ? `${command}.cmd` : command;
+}
+
 function defaultRunCommand(command: string, args: string[], cwd: string): string {
-  return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: 'pipe' });
+  return execFileSync(resolveExecutable(command), args, { cwd, encoding: 'utf8', stdio: 'pipe' });
 }
 
 function runCheckStep(run: RunCommand, command: string, args: string[], cwd: string): CommandCheckResult {
