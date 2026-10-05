@@ -6,6 +6,7 @@ tags: ["住宅", "シミュレーター"]
 draft: false
 featured: true
 toolId: "rent-vs-buy"
+image: "./rent-vs-buy-simulator-hero.png"
 ---
 
 ## このツールについて

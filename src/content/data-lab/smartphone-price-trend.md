@@ -17,6 +17,7 @@ chart:
   series:
     - label: "平均価格（万円）"
       data: [7.2, 7.8, 8.1, 8.5, 8.9]
+image: "./smartphone-price-trend-hero.png"
 ---
 
 > 🚧 このコンテンツはTOPページのデザイン確認用のサンプルデータです。実際のDATA LABコンテンツ実装時に差し替えられます。
