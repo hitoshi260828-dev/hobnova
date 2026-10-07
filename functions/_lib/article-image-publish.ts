@@ -6,7 +6,7 @@ import { HOBNOVA_REPO } from './cover-publish';
 export interface PublishArticleImagesArgs {
   article_path?: unknown;
   branch?: unknown;
-  images?: Array<{ key?: unknown; image?: ImageInputArgs; alt?: unknown }>;
+  images?: Array<{ key?: unknown; image?: ImageInputArgs; alt?: unknown; replace_reference?: unknown }>;
   dry_run?: unknown;
 }
 
@@ -17,7 +17,7 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
     return { status: 'error', code: 'invalid_branch' };
   }
   if (!Array.isArray(args.images) || args.images.length < 1 || args.images.length > 8) return { status: 'error', code: 'invalid_images_count' };
-  const entries: Array<{ key: string; path: string; relative: string; data: Uint8Array }> = [];
+  const entries: Array<{ key: string; path: string; relative: string; data: Uint8Array; replaceReference?: string }> = [];
   const keys = new Set<string>();
   for (const item of args.images) {
     if (typeof item.key !== 'string' || !/^(hero|day-night|screen-size|checkpoints|lumens-guide)$/.test(item.key) || keys.has(item.key)) return { status: 'error', code: 'invalid_image_key' };
@@ -25,7 +25,8 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
     const checkedImage = validateImageInput(item.image);
     if (!checkedImage.valid || !checkedImage.bytes || !checkedImage.extension) return { status: 'error', code: 'invalid_image', message: checkedImage.error };
     const filename = `${checked.slug}-${item.key}.${checkedImage.extension}`;
-    entries.push({ key: item.key, path: checked.dir + filename, relative: './' + filename, data: checkedImage.bytes });
+    if (item.key !== 'hero' && (typeof item.replace_reference !== 'string' || !/^\.\/[a-z0-9][a-z0-9.-]*\.(svg|png|jpg|webp)$/.test(item.replace_reference) || item.replace_reference.includes('..'))) return { status: 'error', code: 'invalid_replace_reference' };
+    entries.push({ key: item.key, path: checked.dir + filename, relative: './' + filename, data: checkedImage.bytes, replaceReference: item.key === 'hero' ? undefined : item.replace_reference as string });
   }
   const articlePath = args.article_path as string;
   try {
@@ -41,10 +42,7 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
         if (!/^image:.*$/m.test(updated)) return { status: 'error', code: 'hero_field_missing' };
         updated = updated.replace(/^image:.*$/m, `image: "${item.relative}"`);
       } else {
-        const svgName = `./${checked.slug}-${item.key}.svg`;
-        // The PR may use a legacy name (Aladdin X2 article); replace by role, not by slug.
-        const role = { 'day-night': 'aladdin-x2-day-night.svg', 'screen-size': 'aladdin-x2-screen-size.svg', checkpoints: 'aladdin-x2-checkpoints.svg', 'lumens-guide': 'aladdin-x2-lumens-guide.svg' }[item.key];
-        const oldRef = role ? './' + role : svgName;
+        const oldRef = item.replaceReference!;
         if (!updated.includes(oldRef)) return { status: 'error', code: 'image_reference_missing', key: item.key };
         updated = updated.split(oldRef).join(item.relative);
       }
@@ -58,11 +56,14 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
     }
     const textBytes = new TextEncoder().encode(updated);
     tree.push({ path: articlePath, mode: '100644', type: 'blob', sha: await createBlob(token, HOBNOVA_REPO, bytesToBase64(textBytes)) });
-    // Delete the temporary SVGs only when replacing all five assets.
-    if (entries.length === 5 && ['hero','day-night','screen-size','checkpoints','lumens-guide'].every(k => keys.has(k))) {
-      for (const name of ['aladdin-x2-brightness-hero.svg','aladdin-x2-day-night.svg','aladdin-x2-screen-size.svg','aladdin-x2-checkpoints.svg','aladdin-x2-lumens-guide.svg']) {
-        tree.push({ path: checked.dir + name, mode: '100644', type: 'blob', sha: null });
-      }
+    // Remove replaced local assets, but only when no longer referenced by the article.
+    const oldRefs = new Set(entries.map(e => e.replaceReference).filter((v): v is string => Boolean(v)));
+    const heroMatch = /^image:\s*["']?(\.\/[a-z0-9][a-z0-9.-]*\.(?:svg|png|jpg|webp))["']?\s*$/m.exec(markdown);
+    if (keys.has('hero') && heroMatch) oldRefs.add(heroMatch[1]);
+    for (const ref of oldRefs) {
+      if (updated.includes(ref)) continue;
+      const oldPath = checked.dir + ref.slice(2);
+      if (!entries.some(e => e.path === oldPath) && oldPath !== articlePath) tree.push({ path: oldPath, mode: '100644', type: 'blob', sha: null });
     }
     const treeSha = await createTree(token, HOBNOVA_REPO, headCommit.tree.sha, tree);
     const commitSha = await createCommitObject(token, HOBNOVA_REPO, 'Replace temporary projector SVGs with approved images', treeSha, headSha);
