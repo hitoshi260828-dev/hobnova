@@ -4,7 +4,7 @@ description: "Aladdin X2を使っていて黒いドットが現れ、買い替�
 publishDate: 2026-10-07
 category: "gadget"
 tags: ["プロジェクター", "Aladdin X2", "ルーメン", "買い替え"]
-image: "./aladdin-x2-brightness-hero.svg"
+image: "./aladdin-x2-brightness-hero.png"
 draft: false
 featured: false
 ---
@@ -25,7 +25,7 @@ featured: false
 
 ## 昼と夜。同じプロジェクターなのに違う
 
-![昼と夜で見え方が変わるイメージ](./aladdin-x2-day-night.svg)
+![昼と夜で見え方が変わるイメージ](./aladdin-x2-day-night.png)
 
 昼に映像が見づらくなる理由は、単にプロジェクターの光が弱いからとは限りません。
 
@@ -37,7 +37,7 @@ featured: false
 
 ## 100インチにすると、もっと明るさが必要？
 
-![60インチと120インチの面積比較](./aladdin-x2-screen-size.svg)
+![60インチと120インチの面積比較](./aladdin-x2-screen-size.png)
 
 画面が大きいほど迫力はアップ。でも、光は広い範囲に分散します。
 
@@ -47,7 +47,7 @@ featured: false
 
 ## ルーメンの数字だけで選ばない
 
-![購入前に確認したいポイント](./aladdin-x2-checkpoints.svg)
+![購入前に確認したいポイント](./aladdin-x2-checkpoints.png)
 
 買い替え時に見ておきたいのは、次の4点。
 
@@ -62,7 +62,7 @@ featured: false
 
 ## 結局、昼と夜は何ルーメン？
 
-![昼と夜のルーメン目安](./aladdin-x2-lumens-guide.svg)
+![昼と夜のルーメン目安](./aladdin-x2-lumens-guide.png)
 
 80〜100インチ前後で使う家庭用プロジェクターを想定すると、ざっくり次が出発点になります。
 
