@@ -117,7 +117,7 @@ const TOOLS = [
       properties: {
         article_path: { type: 'string' },
         branch: { type: 'string', description: '既存PRのhead branch。mainは禁止。' },
-        images: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'object', properties: { key: { type: 'string', enum: ['hero','day-night','screen-size','checkpoints','lumens-guide'] }, image: { type: 'object', properties: { data: { type: 'string' }, mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES } }, required: ['data'] } }, required: ['key','image'] } },
+        images: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'object', properties: { key: { type: 'string', enum: ['hero','day-night','screen-size','checkpoints','lumens-guide'] }, image: { type: 'object', properties: { data: { type: 'string' }, mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES } }, required: ['data'] }, replace_reference: { type: 'string', description: '本文画像の置換元となる相対参照（例: ./old-image.svg）。heroでは不要。' } }, required: ['key','image'] } },
         dry_run: { type: 'boolean' },
       },
       required: ['article_path','branch','images'],
