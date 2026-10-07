@@ -4,6 +4,7 @@ import { listContacts, getContactById, updateContactStatus } from '../_lib/db';
 import { issuerFromRequest, mcpResource, protectedResourceMetadataUrl, validateAccessToken } from '../_lib/oauth';
 import { publishCover, type PublishCoverArgs } from '../_lib/cover-publish';
 import { ALLOWED_IMAGE_MIME_TYPES } from '../_lib/image-validate';
+import { publishArticleImages, type PublishArticleImagesArgs } from '../_lib/article-image-publish';
 
 // MCP Streamable HTTP transport（単一エンドポイント、ステートレス実装）。
 // セッション管理(Mcp-Session-Id)は必須ではないため実装せず、リクエストごとに完結させる。
@@ -108,6 +109,20 @@ const TOOLS = [
       required: ['article_path', 'image'],
     },
   },
+  {
+    name: 'publish_article_images',
+    description: '承認済み画像を既存PRブランチの記事へまとめて反映。coverと本文画像に対応し、mainへの直接書き込みはしない。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        article_path: { type: 'string' },
+        branch: { type: 'string', description: '既存PRのhead branch。mainは禁止。' },
+        images: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'object', properties: { key: { type: 'string', enum: ['hero','day-night','screen-size','checkpoints','lumens-guide'] }, image: { type: 'object', properties: { data: { type: 'string' }, mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES } }, required: ['data'] } }, required: ['key','image'] } },
+        dry_run: { type: 'boolean' },
+      },
+      required: ['article_path','branch','images'],
+    },
+  },
 ] as const;
 
 function toolTextResult(data: unknown, isError = false) {
@@ -151,6 +166,10 @@ async function callTool(env: Env, name: string, args: Record<string, unknown>) {
     }
     case 'publish_generated_image': {
       const result = await publishCover(env, args as PublishCoverArgs);
+      return toolTextResult(result, result.status === 'error');
+    }
+    case 'publish_article_images': {
+      const result = await publishArticleImages(env, args as PublishArticleImagesArgs);
       return toolTextResult(result, result.status === 'error');
     }
     default:
