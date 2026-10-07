@@ -11,7 +11,11 @@ describe('publish_article_images validation', () => {
     expect(await publishArticleImages(env, { article_path, branch: 'article/test', images: [] })).toMatchObject({ status: 'error', code: 'invalid_images_count' });
   });
   it('rejects duplicate image roles', async () => {
-    expect(await publishArticleImages(env, { article_path, branch: 'article/test', images: [{ key: 'hero', image: { data: 'x' } }, { key: 'hero', image: { data: 'x' } }] })).toMatchObject({ status: 'error', code: 'invalid_image' });
+    const image = { data: 'x', mime_type: 'image/png' };
+    expect(await publishArticleImages(env, { article_path, branch: 'article/test', images: [{ key: 'hero', image }, { key: 'hero', image }] })).toMatchObject({ status: 'error', code: 'invalid_image' });
+  });
+  it('rejects unsupported branch names', async () => {
+    expect(await publishArticleImages(env, { article_path, branch: '../main', images: [{ key: 'hero', image: { data: 'x' } }] })).toMatchObject({ status: 'error', code: 'invalid_branch' });
   });
   it('rejects path traversal', async () => {
     expect(await publishArticleImages(env, { article_path: '../secret.md', branch: 'article/test', images: [] })).toMatchObject({ status: 'error', code: 'invalid_article_path' });
