@@ -20,7 +20,7 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
   const entries: Array<{ key: string; path: string; relative: string; data: Uint8Array; replaceReference?: string }> = [];
   const keys = new Set<string>();
   for (const item of args.images) {
-    if (typeof item.key !== 'string' || !/^(hero|day-night|screen-size|checkpoints|lumens-guide)$/.test(item.key) || keys.has(item.key)) return { status: 'error', code: 'invalid_image_key' };
+    if (typeof item.key !== 'string' || !/^[a-z][a-z0-9-]{0,48}$/.test(item.key) || keys.has(item.key)) return { status: 'error', code: 'invalid_image_key' };
     keys.add(item.key);
     const checkedImage = validateImageInput(item.image);
     if (!checkedImage.valid || !checkedImage.bytes || !checkedImage.extension) return { status: 'error', code: 'invalid_image', message: checkedImage.error };
@@ -37,10 +37,13 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
     const binary = atob(article.content.replace(/\s/g, ''));
     const markdown = new TextDecoder().decode(Uint8Array.from(binary, c => c.charCodeAt(0)));
     let updated = markdown;
+    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown);
+    if (!frontmatter) return { status: 'error', code: 'frontmatter_missing' };
     for (const item of entries) {
       if (item.key === 'hero') {
-        if (!/^image:.*$/m.test(updated)) return { status: 'error', code: 'hero_field_missing' };
-        updated = updated.replace(/^image:.*$/m, `image: "${item.relative}"`);
+        if (!/^image:.*$/m.test(frontmatter[1])) return { status: 'error', code: 'hero_field_missing' };
+        const revisedFrontmatter = frontmatter[0].replace(/^image:.*$/m, `image: "${item.relative}"`);
+        updated = revisedFrontmatter + updated.slice(frontmatter[0].length);
       } else {
         const oldRef = item.replaceReference!;
         if (!updated.includes(oldRef)) return { status: 'error', code: 'image_reference_missing', key: item.key };
@@ -58,7 +61,7 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
     tree.push({ path: articlePath, mode: '100644', type: 'blob', sha: await createBlob(token, HOBNOVA_REPO, bytesToBase64(textBytes)) });
     // Remove replaced local assets, but only when no longer referenced by the article.
     const oldRefs = new Set(entries.map(e => e.replaceReference).filter((v): v is string => Boolean(v)));
-    const heroMatch = /^image:\s*["']?(\.\/[a-z0-9][a-z0-9.-]*\.(?:svg|png|jpg|webp))["']?\s*$/m.exec(markdown);
+    const heroMatch = /^image:\s*["']?(\.\/[a-z0-9][a-z0-9.-]*\.(?:svg|png|jpg|webp))["']?\s*$/m.exec(frontmatter[1]);
     if (keys.has('hero') && heroMatch) oldRefs.add(heroMatch[1]);
     for (const ref of oldRefs) {
       if (updated.includes(ref)) continue;
@@ -66,7 +69,7 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
       if (!entries.some(e => e.path === oldPath) && oldPath !== articlePath) tree.push({ path: oldPath, mode: '100644', type: 'blob', sha: null });
     }
     const treeSha = await createTree(token, HOBNOVA_REPO, headCommit.tree.sha, tree);
-    const commitSha = await createCommitObject(token, HOBNOVA_REPO, 'Replace temporary projector SVGs with approved images', treeSha, headSha);
+    const commitSha = await createCommitObject(token, HOBNOVA_REPO, 'Replace article images with approved assets', treeSha, headSha);
     await updateRef(token, HOBNOVA_REPO, args.branch, commitSha);
     return { status: 'success', branch: args.branch, commit_sha: commitSha, image_paths: entries.map(e => e.path) };
   } catch {
