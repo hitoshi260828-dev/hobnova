@@ -4,6 +4,7 @@ import { listContacts, getContactById, updateContactStatus } from '../_lib/db';
 import { issuerFromRequest, mcpResource, protectedResourceMetadataUrl, validateAccessToken } from '../_lib/oauth';
 import { publishCover, type PublishCoverArgs } from '../_lib/cover-publish';
 import { ALLOWED_IMAGE_MIME_TYPES } from '../_lib/image-validate';
+import { publishArticleImages, type PublishArticleImagesArgs } from '../_lib/article-image-publish';
 
 // MCP Streamable HTTP transport（単一エンドポイント、ステートレス実装）。
 // セッション管理(Mcp-Session-Id)は必須ではないため実装せず、リクエストごとに完結させる。
@@ -108,6 +109,20 @@ const TOOLS = [
       required: ['article_path', 'image'],
     },
   },
+  {
+    name: 'publish_article_images',
+    description: '承認済み画像を既存PRブランチの記事へまとめて反映。coverと本文画像に対応し、mainへの直接書き込みはしない。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        article_path: { type: 'string' },
+        branch: { type: 'string', description: '既存PRのhead branch。mainは禁止。' },
+        images: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'object', properties: { key: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,48}, image: { type: 'object', properties: { data: { type: 'string' }, mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES } }, required: ['data'] }, replace_reference: { type: 'string', description: '本文画像の置換元となる相対参照（例: ./old-image.svg）。heroでは不要。' } }, required: ['key','image'] } },
+        dry_run: { type: 'boolean' },
+      },
+      required: ['article_path','branch','images'],
+    },
+  },
 ] as const;
 
 function toolTextResult(data: unknown, isError = false) {
@@ -151,6 +166,135 @@ async function callTool(env: Env, name: string, args: Record<string, unknown>) {
     }
     case 'publish_generated_image': {
       const result = await publishCover(env, args as PublishCoverArgs);
+      return toolTextResult(result, result.status === 'error');
+    }
+    case 'publish_article_images': {
+      const result = await publishArticleImages(env, args as PublishArticleImagesArgs);
+      return toolTextResult(result, result.status === 'error');
+    }
+    default:
+      return toolTextResult({ error: 'unknown_tool' }, true);
+  }
+}
+
+// このエンドポイントはSSEストリームを提供しない（GETは405で「非対応」を明示するのが仕様上正しい）。
+export const onRequestGet: PagesFunction<Env> = async () => {
+  return new Response(null, { status: 405 });
+};
+
+export const onRequestPost: PagesFunction<Env> = async (context) => {
+  const { request, env } = context;
+
+  const authHeader = request.headers.get('authorization') ?? '';
+  const match = /^Bearer\s+(.+)$/.exec(authHeader);
+  if (!match) return unauthorizedResponse(request, 'unauthorized');
+
+  const tokenRecord = await validateAccessToken(env.CONTACTS_DB, match[1]);
+  if (!tokenRecord) return unauthorizedResponse(request, 'unauthorized');
+  const expectedResource = mcpResource(issuerFromRequest(request));
+  if (tokenRecord.resource && tokenRecord.resource !== expectedResource) {
+    return unauthorizedResponse(request, 'invalid_token_audience');
+  }
+
+  let body: JsonRpcRequest;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify(rpcError(null, -32700, 'parse_error')), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  const respond = (payload: unknown, status = 200) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+    });
+
+  // 通知（idを持たないメッセージ。例: notifications/initialized）は本文なしの202を返す。
+  if (body.id === undefined || body.id === null) {
+    return new Response(null, { status: 202 });
+  }
+
+  switch (body.method) {
+    case 'initialize':
+      return respond(
+        rpcResult(body.id, {
+          protocolVersion: PROTOCOL_VERSION,
+          capabilities: { tools: {} },
+          serverInfo: { name: 'hobnova-contact-mcp', version: '1.0.0' },
+        })
+      );
+    case 'tools/list':
+      return respond(rpcResult(body.id, { tools: TOOLS }));
+    case 'tools/call': {
+      const params = body.params ?? {};
+      const name = params.name as string;
+      const args = (params.arguments as Record<string, unknown>) ?? {};
+      if (!TOOLS.some((t) => t.name === name)) {
+        return respond(rpcError(body.id, -32602, 'unknown_tool'));
+      }
+      const result = await callTool(env, name, args);
+      return respond(rpcResult(body.id, result));
+    }
+    default:
+      return respond(rpcError(body.id, -32601, 'method_not_found'));
+  }
+};
+ }, image: { type: 'object', properties: { data: { type: 'string' }, mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES } }, required: ['data'] }, replace_reference: { type: 'string', description: '本文画像の置換元となる相対参照（例: ./old-image.svg）。heroでは不要。' } }, required: ['key','image'] } },
+        dry_run: { type: 'boolean' },
+      },
+      required: ['article_path','branch','images'],
+    },
+  },
+] as const;
+
+function toolTextResult(data: unknown, isError = false) {
+  return { content: [{ type: 'text', text: JSON.stringify(data) }], isError };
+}
+
+async function callTool(env: Env, name: string, args: Record<string, unknown>) {
+  switch (name) {
+    case 'list_contacts': {
+      const status = typeof args.status === 'string' ? args.status : undefined;
+      if (status && !(CONTACT_STATUSES as readonly string[]).includes(status)) {
+        return toolTextResult({ error: 'invalid_status' }, true);
+      }
+      const limitRaw = typeof args.limit === 'number' ? args.limit : 20;
+      const limit = Math.min(Math.max(1, Math.trunc(limitRaw)), 100);
+      const rows = await listContacts(env.CONTACTS_DB, {
+        status: status as ContactStatus | undefined,
+        limit,
+      });
+      return toolTextResult({ contacts: rows.map(toPublicContact) });
+    }
+    case 'get_contact': {
+      const id = Number(args.id);
+      if (!Number.isFinite(id) || id <= 0) return toolTextResult({ error: 'invalid_id' }, true);
+      const contact = await getContactById(env.CONTACTS_DB, id);
+      if (!contact) return toolTextResult({ error: 'not_found' }, true);
+      return toolTextResult({ contact: toPublicContact(contact) });
+    }
+    case 'update_contact_status': {
+      const id = Number(args.id);
+      const status = args.status;
+      if (!Number.isFinite(id) || id <= 0) return toolTextResult({ error: 'invalid_id' }, true);
+      if (typeof status !== 'string' || !(CONTACT_STATUSES as readonly string[]).includes(status)) {
+        return toolTextResult({ error: 'invalid_status' }, true);
+      }
+      const existing = await getContactById(env.CONTACTS_DB, id);
+      if (!existing) return toolTextResult({ error: 'not_found' }, true);
+      await updateContactStatus(env.CONTACTS_DB, id, status as ContactStatus);
+      const updated = await getContactById(env.CONTACTS_DB, id);
+      return toolTextResult({ contact: toPublicContact(updated!) });
+    }
+    case 'publish_generated_image': {
+      const result = await publishCover(env, args as PublishCoverArgs);
+      return toolTextResult(result, result.status === 'error');
+    }
+    case 'publish_article_images': {
+      const result = await publishArticleImages(env, args as PublishArticleImagesArgs);
       return toolTextResult(result, result.status === 'error');
     }
     default:
