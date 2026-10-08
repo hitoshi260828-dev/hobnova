@@ -32,6 +32,13 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
   try {
     const token = await resolveGitHubToken(env);
     const headSha = await getBranchHeadSha(token, HOBNOVA_REPO, args.branch);
+    // Require an open PR with this exact head and repository before writing.
+    const prResponse = await fetch(`https://api.github.com/repos/${HOBNOVA_REPO.owner}/${HOBNOVA_REPO.repo}/pulls?state=open&head=${encodeURIComponent(HOBNOVA_REPO.owner + ':' + args.branch)}&per_page=100`, {
+      headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' },
+    });
+    if (!prResponse.ok) return { status: 'error', code: 'pr_lookup_failed' };
+    const prs = await prResponse.json() as Array<{ state: string; head: { ref: string; sha: string; repo: { full_name: string } }; base: { ref: string } }>;
+    if (!prs.some(pr => pr.state === 'open' && pr.head.ref === args.branch && pr.head.sha === headSha && pr.head.repo?.full_name === `${HOBNOVA_REPO.owner}/${HOBNOVA_REPO.repo}` && pr.base.ref === 'main')) return { status: 'error', code: 'open_pr_not_found' };
     const article = await getFileContents(token, HOBNOVA_REPO, articlePath, args.branch);
     if (!article) return { status: 'error', code: 'article_not_found' };
     const binary = atob(article.content.replace(/\s/g, ''));
@@ -59,15 +66,7 @@ export async function publishArticleImages(env: GitHubAuthEnv, args: PublishArti
     }
     const textBytes = new TextEncoder().encode(updated);
     tree.push({ path: articlePath, mode: '100644', type: 'blob', sha: await createBlob(token, HOBNOVA_REPO, bytesToBase64(textBytes)) });
-    // Remove replaced local assets, but only when no longer referenced by the article.
-    const oldRefs = new Set(entries.map(e => e.replaceReference).filter((v): v is string => Boolean(v)));
-    const heroMatch = /^image:\s*["']?(\.\/[a-z0-9][a-z0-9.-]*\.(?:svg|png|jpg|webp))["']?\s*$/m.exec(frontmatter[1]);
-    if (keys.has('hero') && heroMatch) oldRefs.add(heroMatch[1]);
-    for (const ref of oldRefs) {
-      if (updated.includes(ref)) continue;
-      const oldPath = checked.dir + ref.slice(2);
-      if (!entries.some(e => e.path === oldPath) && oldPath !== articlePath) tree.push({ path: oldPath, mode: '100644', type: 'blob', sha: null });
-    }
+    // Preserve previous assets: other articles may still reference them.
     const treeSha = await createTree(token, HOBNOVA_REPO, headCommit.tree.sha, tree);
     const commitSha = await createCommitObject(token, HOBNOVA_REPO, 'Replace article images with approved assets', treeSha, headSha);
     await updateRef(token, HOBNOVA_REPO, args.branch, commitSha);
