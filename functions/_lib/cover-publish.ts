@@ -142,9 +142,12 @@ export async function publishCover(env: GitHubAuthEnv, args: PublishCoverArgs): 
     const imageBlobSha = await createBlob(token, HOBNOVA_REPO, bytesToBase64(imageCheck.bytes));
 
     let updatedMarkdown = writeFrontmatterImage(markdownSource, imageRelativeRef, coverField);
-    // NEWS記事はcover無しの間`draft: true`で非公開（cover待ち状態）のため、coverが付いた
-    // 時点で同じcommitで公開状態へ切り替える（人間が別途draft:falseへ編集する手間を省く）。
-    if (pathCheck.dir === 'src/content/news/') {
+    // NEWS記事はcover無しの間`draft: true`で非公開（cover待ち状態）のため、「coverが初めて
+    // 付いた」時点（= それまでcoverが無かった場合のみ）、同じcommitで公開状態へ切り替える。
+    // `current.image`が既にある場合（replace=trueでの置換）は、そのdraft状態が別の理由
+    // （編集者による一時取り下げ等）で設定されている可能性があるため、un-draftしない。
+    const wasPendingCover = pathCheck.dir === 'src/content/news/' && !current.image;
+    if (wasPendingCover) {
       updatedMarkdown = clearNewsDraftFlag(updatedMarkdown);
     }
     const markdownBlobSha = await createBlob(token, HOBNOVA_REPO, btoa(unescape(encodeURIComponent(updatedMarkdown))));
@@ -177,7 +180,7 @@ export async function publishCover(env: GitHubAuthEnv, args: PublishCoverArgs): 
       alt,
       replace,
       mimeBytes: imageCheck.bytes.length,
-      willUndraftNews: pathCheck.dir === 'src/content/news/',
+      willUndraftNews: wasPendingCover,
     });
     const pr = await createPullRequest(token, HOBNOVA_REPO, {
       title: `Add ChatGPT cover for ${humanizeSlug(slug)}`,

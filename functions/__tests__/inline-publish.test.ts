@@ -223,4 +223,26 @@ describe('publishInlineImage', () => {
     expect(JSON.stringify(result)).not.toContain('test-token');
     expect(JSON.stringify(result)).not.toContain('resolved-token');
   });
+
+  it('download_url経由（ChatGPTのfile_id/download_url参照）でもBase64と同様にcommit/PR作成まで通る', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      body: { getReader: () => ({ read: vi.fn().mockResolvedValueOnce({ done: false, value: JPEG_BYTES }).mockResolvedValueOnce({ done: true, value: undefined }) }) },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await publishInlineImage(ENV, {
+      article_path: 'src/content/articles/laptop-buying-guide.md',
+      image: { download_url: 'https://files.chatgpt.example/abc', mime_type: 'image/jpeg' },
+      after_heading: '製品の比較ポイント',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('https://files.chatgpt.example/abc', expect.objectContaining({ signal: expect.anything() }));
+    expect(result.status).toBe('success');
+    expect(createPullRequestMock).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
 });

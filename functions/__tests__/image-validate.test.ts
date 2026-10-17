@@ -132,11 +132,21 @@ describe('validateImageInput', () => {
 
 describe('resolveImageInput', () => {
   function fakeResponse(bytes: Uint8Array, { ok = true, status = 200, contentLength }: { ok?: boolean; status?: number; contentLength?: number } = {}) {
+    let served = false;
     return {
       ok,
       status,
       headers: { get: (name: string) => (name === 'content-length' && contentLength !== undefined ? String(contentLength) : null) },
       arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+      body: {
+        getReader: () => ({
+          async read() {
+            if (served) return { done: true, value: undefined };
+            served = true;
+            return { done: false, value: bytes };
+          },
+        }),
+      },
     } as unknown as Response;
   }
 
@@ -146,13 +156,22 @@ describe('resolveImageInput', () => {
     expect(result.extension).toBe('png');
   });
 
+  it('download_urlはhttps以外を拒否する', async () => {
+    const fetchImpl = vi.fn();
+    const result = await resolveImageInput({ download_url: 'http://files.chatgpt.example/abc' }, { fetchImpl });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/https/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it('download_urlをfetchし、mime_type宣言込みで受け付ける', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(PNG_BYTES));
     const result = await resolveImageInput(
       { download_url: 'https://files.chatgpt.example/abc', mime_type: 'image/png', file_id: 'file-123' },
       { fetchImpl }
     );
-    expect(fetchImpl).toHaveBeenCalledWith('https://files.chatgpt.example/abc');
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://files.chatgpt.example/abc');
+    expect(fetchImpl.mock.calls[0][1]).toEqual(expect.objectContaining({ signal: expect.anything() }));
     expect(result.valid).toBe(true);
     expect(result.extension).toBe('png');
     expect(result.bytes?.length).toBe(PNG_BYTES.length);

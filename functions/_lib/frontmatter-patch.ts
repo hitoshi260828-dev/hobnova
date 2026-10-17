@@ -12,12 +12,17 @@ export interface FrontmatterInfo {
   image: string | null;
 }
 
+// 既知のコレクションが使う画像フィールド名のみ許可する（string全般を受け付けると、将来
+// 誤って外部入力をそのまま渡すような変更が入った場合に正規表現インジェクション/ReDoSの
+// 経路になりうるため、リテラル型で呼び出し側の選択肢をコード上で固定する）。
+export type ImageFieldName = 'image' | 'cover';
+
 /**
  * 現在のfrontmatterから画像フィールドの値（クォート除去済み）を読み取る。
  * フィールド名はコレクションごとに異なる（articles/data-lab/toolsは`image:`、newsは`cover:`）ため
  * 呼び出し側（cover-publish.ts）がarticle_pathの配置先ディレクトリから決めて渡す。
  */
-export function readFrontmatterImage(markdownSource: string, fieldName: string = 'image'): FrontmatterInfo {
+export function readFrontmatterImage(markdownSource: string, fieldName: ImageFieldName = 'image'): FrontmatterInfo {
   const match = FRONTMATTER_PATTERN.exec(markdownSource);
   if (!match) return { hasFrontmatter: false, image: null };
 
@@ -40,7 +45,7 @@ export function readFrontmatterImage(markdownSource: string, fieldName: string =
  * frontmatter内の画像フィールド（既定`image:`、newsは`cover:`を渡す）を更新する
  * （既存なら置換、無ければ追加）。frontmatterブロック以外（本文）は一切変更しない。
  */
-export function writeFrontmatterImage(markdownSource: string, imagePath: string, fieldName: string = 'image'): string {
+export function writeFrontmatterImage(markdownSource: string, imagePath: string, fieldName: ImageFieldName = 'image'): string {
   const match = FRONTMATTER_PATTERN.exec(markdownSource);
   if (!match) {
     throw new Error('markdown source has no frontmatter block');

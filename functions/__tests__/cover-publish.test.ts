@@ -260,4 +260,26 @@ describe('publishCover', () => {
     expect(writtenMarkdown).not.toMatch(/^image:/m);
     expect(writtenMarkdown).toMatch(/^draft: false$/m);
   });
+
+  it('download_url経由（ChatGPTのfile_id/download_url参照）でもBase64と同様にcommit/PR作成まで通る', async () => {
+    getFileContentsMock.mockResolvedValue({ sha: 'filesha', content: encodeContent(NO_IMAGE_MD), encoding: 'base64' });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      body: { getReader: () => ({ read: vi.fn().mockResolvedValueOnce({ done: false, value: PNG_BYTES }).mockResolvedValueOnce({ done: true, value: undefined }) }) },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await publishCover(ENV, {
+      article_path: 'src/content/articles/laptop-buying-guide.md',
+      image: { download_url: 'https://files.chatgpt.example/abc', mime_type: 'image/png' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('https://files.chatgpt.example/abc', expect.objectContaining({ signal: expect.anything() }));
+    expect(result.status).toBe('success');
+    expect(createPullRequestMock).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
 });
