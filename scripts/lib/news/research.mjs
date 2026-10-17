@@ -92,10 +92,29 @@ function extractJson(text) {
   return JSON.parse(candidate);
 }
 
+// web_searchで取得した外部コンテンツ（＝信頼できない入力）がそのままcommit・本番公開される
+// ため、構造チェックに加えてコンテンツ自体の安全性もここで検証する。HTMLタグを含む出力は
+// 丸ごと拒否する（astro.config.mjsにMarkdown内生HTMLのsanitize設定が無いため、素通しで
+// 本番へ出てしまう。web_search結果へのprompt injectionで<script>等が混入するのを防ぐ）。
+const HTML_TAG_PATTERN = /<\/?[a-zA-Z][^>]*>/;
+const MAX_LENGTHS = { title: 80, description: 160, summary: 120, heading: 60, body: 400 };
+
+function assertPlainText(value, field, maxLength) {
+  if (HTML_TAG_PATTERN.test(value)) {
+    throw new Error(`research result field "${field}" contains HTML-like markup, rejecting: ${value.slice(0, 80)}`);
+  }
+  if (value.length > maxLength) {
+    throw new Error(`research result field "${field}" exceeds ${maxLength} chars (copyright/verbatim-quote guard): ${value.length}`);
+  }
+}
+
 function validateResearchResult(parsed) {
   if (!parsed || typeof parsed !== "object") throw new Error("research result is not an object");
   if (typeof parsed.title !== "string" || !parsed.title) throw new Error("research result missing title");
   if (typeof parsed.description !== "string" || !parsed.description) throw new Error("research result missing description");
+  assertPlainText(parsed.title, "title", MAX_LENGTHS.title);
+  assertPlainText(parsed.description, "description", MAX_LENGTHS.description);
+  if (parsed.summary) assertPlainText(parsed.summary, "summary", MAX_LENGTHS.summary);
   if (!Array.isArray(parsed.topics) || parsed.topics.length === 0) throw new Error("research result missing topics");
   const invalidTopics = parsed.topics.filter((t) => !NEWS_TOPIC_IDS.includes(t));
   if (invalidTopics.length > 0) throw new Error(`research result has invalid topic ids: ${invalidTopics.join(", ")}`);
@@ -104,10 +123,16 @@ function validateResearchResult(parsed) {
     if (!item.heading || !item.body || !item.sourceName || !item.sourceUrl) {
       throw new Error("research result item missing required field (heading/body/sourceName/sourceUrl)");
     }
+    assertPlainText(item.heading, "items[].heading", MAX_LENGTHS.heading);
+    assertPlainText(item.body, "items[].body", MAX_LENGTHS.body);
+    assertPlainText(item.sourceName, "items[].sourceName", MAX_LENGTHS.title);
     try {
       new URL(item.sourceUrl);
     } catch {
       throw new Error(`research result item has invalid sourceUrl: ${item.sourceUrl}`);
+    }
+    if (item.sourcePublishedDate && !/^\d{4}-\d{2}-\d{2}$/.test(item.sourcePublishedDate)) {
+      throw new Error(`research result item has invalid sourcePublishedDate (expected YYYY-MM-DD): ${item.sourcePublishedDate}`);
     }
   }
   return parsed;

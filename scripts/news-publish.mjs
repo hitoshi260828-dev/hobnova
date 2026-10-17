@@ -67,6 +67,18 @@ async function notify(dryRun, text) {
   await sendLinePush(text);
 }
 
+/**
+ * このslug用のbranchに既に開いているPRがあれば返す（前回実行がCIタイムアウト等で
+ * 中断し、branch/PRだけ残っている場合の再実行に対応する。無ければ毎回research/cover
+ * を再実行して課金が重複し、かつgit push/gh pr createがnon-fast-forward/重複PRで
+ * 失敗する）。
+ */
+async function findOpenPrForBranch(branch) {
+  const output = await ghRaw(["pr", "list", "--head", branch, "--state", "open", "--json", "number,url", "--limit", "1"]);
+  const list = JSON.parse(output || "[]");
+  return list[0] ? { number: list[0].number, url: list[0].url } : null;
+}
+
 async function waitForPrCiGreen(prNumber, { timeoutMs = CI_WAIT_TIMEOUT_MS, pollIntervalMs = CI_POLL_INTERVAL_MS } = {}) {
   const start = Date.now();
   while (true) {
@@ -104,6 +116,10 @@ async function main() {
   const recentUrls = collectRecentSourceUrls(REPO_ROOT, { today: new Date(`${date}T00:00:00Z`) });
   console.log(`[news-publish] 直近の既出source URL: ${recentUrls.size}件（重複除外対象）`);
 
+  // 前回実行がCIタイムアウト等で中断していた場合、branch/PRが既に存在する可能性がある。
+  // その場合はresearch/coverを再実行せず（課金重複防止）、既存PRのCI待ち〜mergeから再開する。
+  const existingPr = await findOpenPrForBranch(branch).catch(() => null);
+
   if (dryRun) {
     console.log("[news-publish] 計画:");
     console.log(`  slug: ${slug}`);
@@ -112,7 +128,24 @@ async function main() {
     console.log(`  planned branch: ${branch}`);
     console.log(`  text model: ${resolveNewsTextModel()}`);
     console.log(`  image model: ${resolveNewsImageModel()}`);
+    if (existingPr) {
+      console.log(`  既存PRを検出: #${existingPr.number} (${existingPr.url})。実行時はresearch/coverを再生成せずこのPRを再開します。`);
+    }
     console.log("[news-publish] dry-run: OpenAI APIは呼び出しません。GitHubへの書き込みも行いません。");
+    return;
+  }
+
+  if (existingPr) {
+    console.log(`[news-publish] ブランチ${branch}の既存PRを検出: #${existingPr.number} (${existingPr.url})。再生成せず続きから処理します。`);
+    if (skipPublish) {
+      await notify(
+        false,
+        `🤖 HOBNOVA NEWS ${editionJa}\n\n${date}分のPRは既に作成済みです（SKIP_PUBLISHのため自動マージは行っていません）。\n${existingPr.url}`
+      );
+      console.log("[news-publish] SKIP_PUBLISHのためここで終了します。");
+      return;
+    }
+    await finishPublish(existingPr.number, existingPr.url, { slug, date, editionJa, articleUrl: `${PRODUCTION_URL}/news/${slug}/` });
     return;
   }
 
@@ -162,7 +195,9 @@ async function main() {
   console.log(`[news-publish] 記事・画像をローカルへ書き込みました: ${filePath}, src/content/news/${coverFileName}`);
 
   // --- 4. branch/commit/push ---
-  await git(["checkout", "-b", branch]);
+  // -B: 前回実行がpush前に失敗し、ローカルにbranchの残骸だけ残っているケースでも
+  // クラッシュせずHEADから作り直す（この分岐に来る時点でopen PRは無いことを確認済み）。
+  await git(["checkout", "-B", branch]);
   await git(["add", `src/content/news/${slug}.md`, `src/content/news/${coverFileName}`]);
   await git([
     "-c", "user.name=hobnova-news-bot",
@@ -203,7 +238,11 @@ async function main() {
     return;
   }
 
-  // --- 6. CI待機 -> merge -> 本番deploy待ち -> 本番URL確認 ---
+  await finishPublish(prNumber, prUrl, { slug, date, editionJa, articleUrl: `${PRODUCTION_URL}/news/${slug}/` });
+}
+
+// --- 6. CI待機 -> merge -> 本番deploy待ち -> 本番URL確認（通常フロー・既存PR再開フローの共通処理） ---
+async function finishPublish(prNumber, prUrl, { date, editionJa, articleUrl }) {
   console.log("[news-publish] CI完了を待っています...");
   const ciResult = await waitForPrCiGreen(prNumber);
   if (!ciResult.ok) {
@@ -231,7 +270,6 @@ async function main() {
     return;
   }
 
-  const articleUrl = `${PRODUCTION_URL}/news/${slug}/`;
   try {
     const res = await fetch(articleUrl);
     if (!res.ok) {

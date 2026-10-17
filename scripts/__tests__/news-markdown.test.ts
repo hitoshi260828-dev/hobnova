@@ -53,7 +53,7 @@ describe('buildNewsMarkdown', () => {
     const md = buildNewsMarkdown(BASE_INPUT);
     expect(md).toContain('name: "Example News"');
     expect(md).toContain('url: "https://example.com/a"');
-    expect(md).toContain('publishedDate: 2026-10-18');
+    expect(md).toContain('publishedDate: "2026-10-18"');
     expect(md).toContain('accessedDate: 2026-10-18');
   });
 

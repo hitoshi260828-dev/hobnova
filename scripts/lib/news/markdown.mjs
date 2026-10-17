@@ -34,7 +34,7 @@ export function buildNewsMarkdown(input) {
   const sourcesYaml = input.items
     .map((item) => {
       const lines = [`  - name: ${yamlString(item.sourceName)}`, `    url: ${yamlString(item.sourceUrl)}`];
-      if (item.sourcePublishedDate) lines.push(`    publishedDate: ${item.sourcePublishedDate}`);
+      if (item.sourcePublishedDate) lines.push(`    publishedDate: ${yamlString(item.sourcePublishedDate)}`);
       lines.push(`    accessedDate: ${input.date}`);
       return lines.join("\n");
     })
