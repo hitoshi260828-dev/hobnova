@@ -10,7 +10,7 @@
 //        （同日に複数回実行されても二重公開しない）。
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   getPrMergeSafety,
   listOpenContentPRs,
@@ -215,7 +215,14 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(`[daily-publish-check] ${error.message}`);
-  process.exitCode = 1;
-});
+// このファイルはテストから直接import（findPublishedToday/buildProductionUrlの単体テスト用）
+// されるため、importするだけでmain()が実行されてしまわないようエントリーポイント判定で
+// ガードする（過去にこのガードが無く、`npm test`実行のたびに実際のgh CLI呼び出しが走る
+// 不具合があった）。
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
+  main().catch((error) => {
+    console.error(`[daily-publish-check] ${error.message}`);
+    process.exitCode = 1;
+  });
+}

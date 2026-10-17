@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // astro check & build成功後のworkflow_runから呼び出す記事完成通知。
+import { pathToFileURL } from "node:url";
 import {
   claimNotification,
   completeNotification,
@@ -109,8 +110,13 @@ async function main() {
   console.log("[notify-article-ready] LINE通知を送信しました。");
 }
 
-main().catch((error) => {
-  // Token/User IDやLINEレスポンス本文は出力しない。
-  console.error(`[notify-article-ready] ${error.message}`);
-  process.exitCode = 1;
-});
+// buildMessage/buildFallbackMessageの単体テストがこのファイルをimportするため、
+// importするだけでmain()が実行されないようガードする。
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
+  main().catch((error) => {
+    // Token/User IDやLINEレスポンス本文は出力しない。
+    console.error(`[notify-article-ready] ${error.message}`);
+    process.exitCode = 1;
+  });
+}
