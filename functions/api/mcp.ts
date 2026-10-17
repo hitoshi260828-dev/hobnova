@@ -79,7 +79,12 @@ const TOOLS = [
       'ChatGPTで生成・選択した画像を、HOBNOVAの記事/DATA LAB/TOOLSへcoverまたは本文画像として取り込み、' +
       'main直接commitではなくPull Requestとして提案する。type: coverは既存coverがある記事はreplace=trueを' +
       '明示しない限り拒否する。type: inlineはafter_headingまたはpositionでH2見出しの直後へ挿入する' +
-      '（本文画像は1記事あたり最大4枚）。dry_run=trueで実際の書き込み・PR作成なしに計画だけを確認できる。',
+      '（本文画像は1記事あたり最大4枚）。dry_run=trueで実際の書き込み・PR作成なしに計画だけを確認できる。' +
+      '画像は会話内の添付・生成画像を直接渡せる（ダウンロードしてBase64に変換して再アップロードする必要はない）。',
+    // OpenAI MCP connectorへ「imageはファイル参照として渡せる」ことを伝える宣言。
+    // これが無いと、ChatGPT側は添付/生成画像をモデル自身がBase64文字列へ手動シリアライズ
+    // しようとし、不安定（image.data is required等のエラーを誘発）になる。
+    _meta: { 'openai/fileParams': ['image'] },
     inputSchema: {
       type: 'object',
       properties: {
@@ -87,20 +92,23 @@ const TOOLS = [
           type: 'string',
           description:
             '対象記事のリポジトリ内パス（例: src/content/articles/laptop-buying-guide.md）。' +
-            'src/content/articles|data-lab|tools 配下の.md/.mdxのみ許可。',
+            'src/content/articles|data-lab|tools|news 配下の.md/.mdxのみ許可。',
         },
         image: {
           type: 'object',
           description:
-            '添付画像。ChatGPT側で「添付画像をツールへ送る」設定を有効にしている場合、会話内の画像が自動的にここへ入る。',
+            '添付・生成画像。ChatGPTが会話内の画像をファイル参照（download_url/file_id）として自動的に渡す。' +
+            '互換性のため、生のBase64（dataフィールド、data:image/png;base64,... 形式も可）も受け付ける。',
           properties: {
+            download_url: { type: 'string', description: 'ChatGPTが発行する一時ダウンロードURL（サーバー側でfetchする）。' },
+            file_id: { type: 'string', description: 'ChatGPT側のファイル識別子（参照用、サーバー側では未使用）。' },
+            file_name: { type: 'string', description: '元のファイル名（参照用）。' },
+            mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES },
             data: {
               type: 'string',
-              description: 'base64エンコードされた画像データ（data:image/png;base64,... 形式も可）',
+              description: '（レガシー/互換用）base64エンコードされた画像データ（data:image/png;base64,... 形式も可）',
             },
-            mime_type: { type: 'string', enum: ALLOWED_IMAGE_MIME_TYPES },
           },
-          required: ['data'],
         },
         type: { type: 'string', enum: ['cover', 'inline'], description: '省略時はcover。本文画像の場合はinlineを指定。' },
         alt: { type: 'string', description: '代替テキスト（省略可。inlineは省略時に見出しから自動生成）。' },

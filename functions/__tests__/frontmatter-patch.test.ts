@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFrontmatterImage, writeFrontmatterImage } from '../_lib/frontmatter-patch';
+import { clearNewsDraftFlag, readFrontmatterImage, writeFrontmatterImage } from '../_lib/frontmatter-patch';
 
 const NO_IMAGE_MD = `---
 title: "用途別に選ぶノートPCの選び方2026"
@@ -91,5 +91,52 @@ describe('writeFrontmatterImage', () => {
     const updated = writeFrontmatterImage(CRLF_MD, './x-hero.png');
     const reread = readFrontmatterImage(updated);
     expect(reread.image).toBe('./x-hero.png');
+  });
+});
+
+const NEWS_PENDING_COVER_MD = `---
+title: "朝のニュース"
+description: "テスト用の説明文です。"
+publishedAt: 2026-10-20T08:00:00+09:00
+edition: morning
+draft: true
+---
+
+本文です。
+`;
+
+describe('readFrontmatterImage / writeFrontmatterImage with fieldName (NEWSの cover: フィールド)', () => {
+  it('newsはimage:ではなくcover:フィールドを読み書きする', () => {
+    const result = readFrontmatterImage(NEWS_PENDING_COVER_MD, 'cover');
+    expect(result.hasFrontmatter).toBe(true);
+    expect(result.image).toBeNull();
+
+    const updated = writeFrontmatterImage(NEWS_PENDING_COVER_MD, './2026-10-20-morning-hero.png', 'cover');
+    expect(readFrontmatterImage(updated, 'cover').image).toBe('./2026-10-20-morning-hero.png');
+    // image:フィールドは書かれない（news schemaにはimage:が存在せず、誤って書くと
+    // Zodのデフォルト挙動で静かに無視され、coverが永遠に反映されない不具合になる）。
+    expect(updated).not.toMatch(/^image:/m);
+  });
+});
+
+describe('clearNewsDraftFlag', () => {
+  it('draft: trueをdraft: falseへ切り替える', () => {
+    const updated = clearNewsDraftFlag(NEWS_PENDING_COVER_MD);
+    expect(updated).toContain('draft: false');
+    expect(updated).not.toMatch(/draft:\s*true/);
+  });
+
+  it('既にdraft: falseならno-op', () => {
+    const alreadyFalse = NEWS_PENDING_COVER_MD.replace('draft: true', 'draft: false');
+    expect(clearNewsDraftFlag(alreadyFalse)).toBe(alreadyFalse);
+  });
+
+  it('draft行が無ければno-op', () => {
+    expect(clearNewsDraftFlag(NO_IMAGE_MD.replace(/draft: false\n/, ''))).toBe(NO_IMAGE_MD.replace(/draft: false\n/, ''));
+  });
+
+  it('frontmatterが無ければそのまま返す', () => {
+    const src = '# frontmatterなし';
+    expect(clearNewsDraftFlag(src)).toBe(src);
   });
 });

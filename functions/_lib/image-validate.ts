@@ -78,6 +78,13 @@ export interface ImageInputValidation {
 export interface ImageInputArgs {
   data?: unknown;
   mime_type?: unknown;
+  // OpenAI MCP connectorの`_meta["openai/fileParams"]`経由で渡されるファイル参照形式。
+  // ChatGPTが添付画像をBase64で手動シリアライズする代わりに、一時ダウンロードURLを
+  // 発行してくる場合に使う（resolveImageInputが対応、validateImageInputは後方互換の
+  // 生Base64専用経路として残す）。
+  download_url?: unknown;
+  file_id?: unknown;
+  file_name?: unknown;
 }
 
 /**
@@ -163,6 +170,143 @@ function matchesMagicBytes(bytes: Uint8Array, mimeType: AllowedImageMimeType): b
         bytes[11] === 0x50
       );
   }
+}
+
+function inferMimeTypeFromBytes(bytes: Uint8Array): AllowedImageMimeType | null {
+  for (const mime of ALLOWED_IMAGE_MIME_TYPES) {
+    if (matchesMagicBytes(bytes, mime)) return mime;
+  }
+  return null;
+}
+
+/**
+ * image入力を解決する。`download_url`があれば（OpenAI MCP connectorの
+ * `_meta["openai/fileParams"]`経由のファイル参照）サーバー側でfetchしてバイト列を取得する
+ * ——ChatGPT（モデル）がBase64を手でシリアライズする必要がなくなり、「ダウンロード→
+ * ローカル保存→Base64変換→再アップロード」をユーザーに要求しない構成になる。
+ * `download_url`が無ければ既存のvalidateImageInput（生Base64）へフォールバックする。
+ */
+// download_url用のfetchタイムアウト。ChatGPTのファイルサーバーは通常高速に応答するはずだが、
+// 攻撃者（有効なbearer tokenの保持者）が意図的に応答を引き延ばすハング攻撃を防ぐ。
+const DOWNLOAD_TIMEOUT_MS = 15_000;
+
+/**
+ * response.bodyをストリーミングで読み、MAX_IMAGE_BYTESを超えた時点で即座に打ち切る。
+ * content-lengthヘッダが無い・虚偽（実際より小さい値）であっても、response.arrayBuffer()で
+ * 応答全体を無条件にバッファしてしまう（サイズ上限チェックがその後に来るため無意味になる）
+ * 問題を避けるため、chunk単位でカウントしながら読む。
+ */
+async function readBodyWithCap(
+  response: Response,
+  maxBytes: number,
+  controller: AbortController
+): Promise<{ bytes: Uint8Array } | { error: string }> {
+  if (!response.body) {
+    // bodyが無い環境（一部のテストダブル等）向けのフォールバック。実fetch()では通常発生しない。
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > maxBytes) return { error: `image exceeds max size of ${maxBytes} bytes` };
+    return { bytes: new Uint8Array(buffer) };
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        controller.abort();
+        return { error: `image exceeds max size of ${maxBytes} bytes` };
+      }
+      chunks.push(value);
+    }
+  } catch (err) {
+    return { error: `failed to read download_url response: ${(err as Error).message}` };
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { bytes };
+}
+
+export async function resolveImageInput(
+  image: ImageInputArgs | undefined,
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {}
+): Promise<ImageInputValidation> {
+  if (!image || typeof image !== 'object') {
+    return { valid: false, error: 'image is required' };
+  }
+
+  const downloadUrl = typeof image.download_url === 'string' && image.download_url.length > 0 ? image.download_url : undefined;
+  if (!downloadUrl) {
+    return validateImageInput(image);
+  }
+
+  // スキームをhttpsのみに制限する（defense-in-depth）。Cloudflare Workersのfetch()は
+  // プライベートIP帯への直接アクセスを標準で拒否するとドキュメントされているが、これは
+  // Cloudflare側のプラットフォーム動作であり本リポジトリのコードが保証するものではない
+  // ため、こちら側でも最低限の制約（httpsのみ・file:等を拒否）を明示的に課す。
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(downloadUrl);
+  } catch {
+    return { valid: false, error: 'download_url is not a valid URL' };
+  }
+  if (parsedUrl.protocol !== 'https:') {
+    return { valid: false, error: 'download_url must use https' };
+  }
+
+  const fetchFn = options.fetchImpl ?? fetch;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DOWNLOAD_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetchFn(downloadUrl, { signal: controller.signal });
+  } catch (err) {
+    clearTimeout(timeout);
+    return { valid: false, error: `failed to fetch download_url: ${(err as Error).message}` };
+  }
+  if (!response.ok) {
+    clearTimeout(timeout);
+    return { valid: false, error: `download_url returned HTTP ${response.status}` };
+  }
+
+  const contentLength = response.headers.get('content-length');
+  if (contentLength && Number(contentLength) > MAX_IMAGE_BYTES) {
+    clearTimeout(timeout);
+    return { valid: false, error: `image exceeds max size of ${MAX_IMAGE_BYTES} bytes` };
+  }
+
+  const bodyResult = await readBodyWithCap(response, MAX_IMAGE_BYTES, controller);
+  clearTimeout(timeout);
+  if ('error' in bodyResult) {
+    return { valid: false, error: bodyResult.error };
+  }
+  const bytes = bodyResult.bytes;
+  if (bytes.length === 0) {
+    return { valid: false, error: 'downloaded image is empty' };
+  }
+
+  const declaredMimeType =
+    typeof image.mime_type === 'string' && (ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(image.mime_type)
+      ? (image.mime_type as AllowedImageMimeType)
+      : undefined;
+  const mimeType = declaredMimeType ?? inferMimeTypeFromBytes(bytes);
+  if (!mimeType) {
+    return { valid: false, error: 'could not determine a supported mime_type for the downloaded image' };
+  }
+  if (!matchesMagicBytes(bytes, mimeType)) {
+    return { valid: false, error: 'image bytes do not match declared mime_type' };
+  }
+
+  return { valid: true, bytes, extension: extensionForMimeType(mimeType) };
 }
 
 export function bytesToBase64(bytes: Uint8Array): string {

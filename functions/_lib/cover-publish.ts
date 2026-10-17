@@ -19,8 +19,8 @@ import {
   type GitHubRepoRef,
   type TreeEntry,
 } from './github-client';
-import { readFrontmatterImage, writeFrontmatterImage } from './frontmatter-patch';
-import { bytesToBase64, validateArticlePath, validateImageInput, type ImageInputArgs } from './image-validate';
+import { clearNewsDraftFlag, readFrontmatterImage, writeFrontmatterImage } from './frontmatter-patch';
+import { bytesToBase64, resolveImageInput, validateArticlePath, type ImageInputArgs } from './image-validate';
 
 export const HOBNOVA_REPO: GitHubRepoRef = { owner: 'hitoshi260828-dev', repo: 'hobnova' };
 export const BASE_BRANCH = 'main';
@@ -77,7 +77,7 @@ export async function publishCover(env: GitHubAuthEnv, args: PublishCoverArgs): 
   const articlePath = args.article_path as string;
   const slug = pathCheck.slug;
 
-  const imageCheck = validateImageInput(args.image);
+  const imageCheck = await resolveImageInput(args.image);
   if (!imageCheck.valid || !imageCheck.bytes || !imageCheck.extension) {
     return errorResult('invalid_image', imageCheck.error ?? 'invalid image');
   }
@@ -103,8 +103,12 @@ export async function publishCover(env: GitHubAuthEnv, args: PublishCoverArgs): 
     return errorResult('article_not_found', `${articlePath} was not found on ${BASE_BRANCH}`);
   }
 
+  // コレクションごとにcoverのfrontmatterフィールド名が異なる
+  // （articles/data-lab/toolsは`image:`、newsは`cover:`。src/content.config.tsのschema参照）。
+  const coverField = pathCheck.dir === 'src/content/news/' ? 'cover' : 'image';
+
   const markdownSource = decodeBase64Utf8(fileContents.content);
-  const current = readFrontmatterImage(markdownSource);
+  const current = readFrontmatterImage(markdownSource, coverField);
   if (!current.hasFrontmatter) {
     return errorResult('no_frontmatter', `${articlePath} has no frontmatter block`);
   }
@@ -137,7 +141,15 @@ export async function publishCover(env: GitHubAuthEnv, args: PublishCoverArgs): 
 
     const imageBlobSha = await createBlob(token, HOBNOVA_REPO, bytesToBase64(imageCheck.bytes));
 
-    const updatedMarkdown = writeFrontmatterImage(markdownSource, imageRelativeRef);
+    let updatedMarkdown = writeFrontmatterImage(markdownSource, imageRelativeRef, coverField);
+    // NEWS記事はcover無しの間`draft: true`で非公開（cover待ち状態）のため、「coverが初めて
+    // 付いた」時点（= それまでcoverが無かった場合のみ）、同じcommitで公開状態へ切り替える。
+    // `current.image`が既にある場合（replace=trueでの置換）は、そのdraft状態が別の理由
+    // （編集者による一時取り下げ等）で設定されている可能性があるため、un-draftしない。
+    const wasPendingCover = pathCheck.dir === 'src/content/news/' && !current.image;
+    if (wasPendingCover) {
+      updatedMarkdown = clearNewsDraftFlag(updatedMarkdown);
+    }
     const markdownBlobSha = await createBlob(token, HOBNOVA_REPO, btoa(unescape(encodeURIComponent(updatedMarkdown))));
 
     const treeEntries: TreeEntry[] = [
@@ -162,7 +174,14 @@ export async function publishCover(env: GitHubAuthEnv, args: PublishCoverArgs): 
     const commitSha = await createCommitObject(token, HOBNOVA_REPO, commitMessage, newTreeSha, mainSha);
     await updateRef(token, HOBNOVA_REPO, branch, commitSha);
 
-    const prBody = buildPrBody({ articlePath, imagePath, alt, replace, mimeBytes: imageCheck.bytes.length });
+    const prBody = buildPrBody({
+      articlePath,
+      imagePath,
+      alt,
+      replace,
+      mimeBytes: imageCheck.bytes.length,
+      willUndraftNews: wasPendingCover,
+    });
     const pr = await createPullRequest(token, HOBNOVA_REPO, {
       title: `Add ChatGPT cover for ${humanizeSlug(slug)}`,
       head: branch,
@@ -201,6 +220,7 @@ function buildPrBody(input: {
   alt: string | null;
   replace: boolean;
   mimeBytes: number;
+  willUndraftNews: boolean;
 }): string {
   const lines = [
     '## 概要',
@@ -211,6 +231,7 @@ function buildPrBody(input: {
     `- 画像: \`${input.imagePath}\`（${(input.mimeBytes / 1024).toFixed(0)} KB）`,
     input.alt ? `- alt: ${input.alt}` : null,
     input.replace ? '- 既存coverを `replace=true` で置換しています' : '- 既存coverが無い状態への新規追加です',
+    input.willUndraftNews ? '- NEWS記事のcover待ち（`draft: true`）状態を、このPRで`draft: false`へ切り替えます（公開状態になります）' : null,
     '',
     '## 確認事項',
     '',

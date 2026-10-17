@@ -1,12 +1,24 @@
 #!/usr/bin/env node
 // NEWS朝版/夜版の自動投稿パイプライン。
-// 収集(OpenAI web_search) -> 重複除外 -> 記事生成 -> アイキャッチ生成 -> ローカルcheck/build
-// -> news collectionへ保存 -> branch/commit/push -> PR作成 -> LINE通知（確認待ち） -> 停止
+// 収集(OpenAI Responses API, web_search) -> 重複除外 -> 記事生成 -> ローカルcheck/build
+// -> news collectionへcover待ち（draft: true）として保存 -> branch/commit/push -> PR作成
+// -> LINE通知（確認待ち） -> 停止
 //
-// 方針（2026-10-18改訂）: docs/ai-article-guidelines.md 9章「最終Mergeは必ず人間が行う。」に
+// 方針（2026-10-18改訂、2回目）: 文章生成（OpenAI Responses API）と画像生成の役割を分離する。
+// OpenAI Image APIをNEWSの標準ルートから外し、画像は「ChatGPTで生成 -> HOBNOVA MCP
+// publish_generated_image -> GitHub PR」という既存の正式ルートに統一した（記事用の
+// images:generateパイプラインとは別に、NEWS専用でOpenAI Image APIを直接叩く経路を持つと、
+// 画像生成の運用・コスト管理・品質基準がルートごとに分裂するため）。
+// このスクリプトはcover無し・`draft: true`の記事PRを作るところまでを行う。cover未定の間は
+// newsスキーマ上 `draft: true` のため本番には一切表示されない（「画像なしでNEWSを本番公開
+// しない」という不変条件を、画像生成の実行順序ではなくdraftフラグで担保する）。
+// cover追加（`draft: false`への切り替えを含む）はfunctions/_lib/cover-publish.tsが
+// `publish_generated_image(type: cover)` 呼び出し時に行う（別PR、cover-publish.ts側で
+// article_pathがsrc/content/news/配下ならcover:フィールド名とdraft解除を自動で扱う）。
+//
+// 方針（2026-10-18改訂、1回目）: docs/ai-article-guidelines.md 9章「最終Mergeは必ず人間が行う。」に
 // 従い、このスクリプトは「レビュー可能なPRを準備する」までしか行わない。mainへのmerge・
-// 本番デプロイ確認は一切行わない（以前のバージョンはCI green後にsquash mergeまで自動で
-// 行っていたが、AI生成記事は人間の最終確認を経るという既存運用ルールに反していたため撤廃）。
+// 本番デプロイ確認は一切行わない。
 //
 // daily-publish-check.mjs（通常記事、JST12:00、1日1本、CI green前提でsquash mergeまで行う）
 // とは完全に独立したscheduler/スクリプト。対象ディレクトリ（src/content/news/）・PR検出方式
@@ -14,13 +26,14 @@
 // のどちらも重複しない設計。
 //
 // 重要: このスクリプトの実行（DRY_RUN無し、SKIP_PUBLISH無し）はOpenAI APIへの課金が必ず発生する
-// （research 1回 + cover画像生成 1回）。DRY_RUNで十分に確認してから実行すること。
+// （research 1回。画像生成はこのスクリプトでは行わないため課金無し）。DRY_RUNで十分に
+// 確認してから実行すること。
 //
 // GitHub Actionsの既知の仕様: ジョブ内のGITHUB_TOKENで作成したPRのpull_requestイベントは、
 // 新しいworkflow実行をトリガーしない（無限ループ防止のための仕様。
 // https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow ）。
 // そのため pr-check.yml の必須check「astro check & build」はこのPRでは自動発火しない可能性が
-// 高い（本セッションでは実機再現検証はしていない。GitHub公式ドキュメントに基づく判断）。
+// 高い（実機再現検証済み。2026-10-17、PR #62で実際にこの通りの挙動を確認した）。
 // このスクリプトは同じcheck/buildを自分のjob内で事前に実行し、結果をPR本文・LINE通知に
 // 含めることでこの制約を補う。mainへのmerge可否は人間が判断する。
 import fs from "node:fs";
@@ -32,7 +45,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { collectRecentSourceUrls, filterDuplicates } from "./lib/news/dedup.mjs";
 import { buildNewsMarkdown, newsFilePath, newsSlug } from "./lib/news/markdown.mjs";
 import { researchNews, resolveNewsTextModel } from "./lib/news/research.mjs";
-import { generateNewsCover, resolveNewsImageModel } from "./lib/news/cover.mjs";
 import { withRetry } from "./lib/news/retry.mjs";
 import { isLineConfigured, sendLinePush } from "./lib/line-push.mjs";
 
@@ -155,10 +167,9 @@ async function main() {
     console.log("[news-publish] 計画:");
     console.log(`  slug: ${slug}`);
     console.log(`  planned file: ${filePath}`);
-    console.log(`  planned cover: src/content/news/${slug}-hero.png`);
     console.log(`  planned branch: ${branch}`);
     console.log(`  text model: ${resolveNewsTextModel()}`);
-    console.log(`  image model: ${resolveNewsImageModel()}`);
+    console.log(`  cover: このスクリプトでは生成しない（ChatGPT + publish_generated_imageで後付け、追加までdraft: true）`);
     if (existingPr) {
       console.log(`  既存PRを検出: #${existingPr.number} (${existingPr.url})。実行時はresearch/coverを再生成せずこのPRの案内のみ再送します。`);
     }
@@ -193,15 +204,10 @@ async function main() {
   }
   console.log(`[news-publish] ニュース項目: ${research.items.length}件`);
 
-  // --- 2. アイキャッチ生成（失敗したら記事を一切書き込まず中止する） ---
-  console.log("[news-publish] アイキャッチを生成しています（OpenAI, gpt-image-1）...");
-  const cover = await withRetry(
-    () => generateNewsCover({ title: research.title, description: research.description, edition }, { apiKey, model: resolveNewsImageModel() }),
-    { maxRetries: 2, onAttemptError: (err, attempt) => console.warn(`[news-publish] cover生成失敗(試行${attempt + 1}): ${err.message}`) }
-  );
-
-  // --- 3. Markdown組み立て + ローカル書き込み（画像・記事とも揃った時点で初めて書く = atomicity） ---
-  const coverFileName = `${slug}-hero.${cover.ext}`;
+  // --- 2. Markdown組み立て + ローカル書き込み（cover無し、draft: true = cover待ち状態） ---
+  // 画像生成はこのスクリプトでは行わない（方針2026-10-18改訂2回目）。coverは後でChatGPT経由の
+  // publish_generated_image(type: cover)で追加される（functions/_lib/cover-publish.tsが
+  // そのPRでcover:フィールドの書き込みとdraft: falseへの切り替えを同じcommitで行う）。
   const markdown = buildNewsMarkdown({
     date,
     edition,
@@ -211,14 +217,12 @@ async function main() {
     summary: research.summary,
     topics: research.topics,
     items: research.items,
-    coverRelativePath: `./${coverFileName}`,
   });
 
   const newsDir = path.join(REPO_ROOT, "src/content/news");
   fs.mkdirSync(newsDir, { recursive: true });
   fs.writeFileSync(path.join(newsDir, `${slug}.md`), markdown, "utf8");
-  fs.writeFileSync(path.join(newsDir, coverFileName), cover.buffer);
-  console.log(`[news-publish] 記事・画像をローカルへ書き込みました: ${filePath}, src/content/news/${coverFileName}`);
+  console.log(`[news-publish] 記事をローカルへ書き込みました（cover待ち、draft: true）: ${filePath}`);
 
   if (skipPublish) {
     console.log("[news-publish] SKIP_PUBLISH: git/PR操作は行わず、生成結果のみ報告してここで終了します。");
@@ -240,23 +244,29 @@ async function main() {
   // -B: 前回実行がpush前に失敗し、ローカルにbranchの残骸だけ残っているケースでも
   // クラッシュせずHEADから作り直す（この分岐に来る時点でopen PRは無いことを確認済み）。
   await git(["checkout", "-B", branch]);
-  await git(["add", `src/content/news/${slug}.md`, `src/content/news/${coverFileName}`]);
+  await git(["add", `src/content/news/${slug}.md`]);
   await git([
     "-c", "user.name=hobnova-news-bot",
     "-c", "user.email=actions@users.noreply.github.com",
-    "commit", "-m", `Add ${editionJa} news for ${date}`,
+    "commit", "-m", `Add ${editionJa} news for ${date} (cover待ち)`,
   ]);
   await git(["push", "-u", "origin", branch]);
 
-  // --- 6. PR作成（mainへのmergeはここでは行わない。最終判断は人間。） ---
+  // --- 6. PR作成（mainへのmergeはここでは行わない。最終判断は人間。cover待ちのためdraft: true） ---
   const prBody = [
     "## 概要",
     "",
-    `NEWS自動投稿（${editionJa}）。OpenAI（web_search + ${resolveNewsTextModel()}）による収集・要約と、${resolveNewsImageModel()}によるアイキャッチ生成。`,
+    `NEWS自動投稿（${editionJa}）。OpenAI（web_search + ${resolveNewsTextModel()}）による収集・要約。`,
     "",
     `- 対象日: ${date}`,
     `- ニュース項目数: ${research.items.length}`,
     `- ローカルcheck（astro check / build）: PASS`,
+    `- cover: 未設定（\`draft: true\`、cover待ち）`,
+    "",
+    "⚠️ この記事はcoverが無いため本番には表示されません（`draft: true`）。" +
+      "このPRをmergeした後、ChatGPTで生成した画像をHOBNOVA MCPの`publish_generated_image`" +
+      `（type: cover, article_path: \`${filePath}\`）で追加してください。追加されると同じcommitで\`draft: false\`に` +
+      "切り替わり、本番に表示されます。画像なしでのdraft手動変更は行わないでください。",
     "",
     "自動生成コンテンツのため、内容の事実確認の上で人間がmergeしてください。このPRは自動でmergeされません。",
     "",
@@ -279,7 +289,7 @@ async function main() {
 
   await notify(
     false,
-    `🤖 HOBNOVA NEWS ${editionJa}\n\n${date}分のPRを作成しました（ローカルcheck PASS）。\n内容を確認し、問題なければGitHubでmergeしてください。本番公開は人間のmerge後に行われます。\n${prUrl}`
+    `🤖 HOBNOVA NEWS ${editionJa}\n\n${date}分のPRを作成しました（ローカルcheck PASS、cover待ち）。\n内容を確認し、問題なければGitHubでmergeしてください。mergeした後、ChatGPTでcoverを追加するまで本番には表示されません。\n${prUrl}`
   );
   console.log("[news-publish] PR作成完了。mergeは人間が行うため、ここで終了します。");
 }

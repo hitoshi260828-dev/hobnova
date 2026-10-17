@@ -43,6 +43,21 @@ describe('POST /api/mcp — publish_generated_image wiring', () => {
     expect(names).toContain('publish_generated_image');
   });
 
+  it('publish_generated_imageは_meta["openai/fileParams"]でimageをファイル参照として宣言している', async () => {
+    // これが無いと、ChatGPTは添付/生成画像をモデル自身でBase64へ手動シリアライズしようとして
+    // 不安定になる（image.data is required等）。download_url/file_idでの受け渡しを有効にする宣言。
+    validateAccessTokenMock.mockResolvedValue({ id: 1, client_id: 'c', resource: null, scope: null });
+    const res = await onRequestPost({
+      request: rpcRequest({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      env: ENV,
+    } as never);
+    const body = (await res.json()) as any;
+    const tool = body.result.tools.find((t: { name: string }) => t.name === 'publish_generated_image');
+    expect(tool._meta).toEqual({ 'openai/fileParams': ['image'] });
+    expect(tool.inputSchema.properties.image.properties.download_url).toBeDefined();
+    expect(tool.inputSchema.properties.image.properties.file_id).toBeDefined();
+  });
+
   it('tools/call publish_generated_image は cover-publish.publishCover を呼び、結果をcontentへ包んで返す', async () => {
     validateAccessTokenMock.mockResolvedValue({ id: 1, client_id: 'c', resource: null, scope: null });
     publishCoverMock.mockResolvedValue({
