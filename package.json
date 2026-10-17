@@ -16,6 +16,7 @@
     "images:import": "tsx scripts/import-generated-image.ts",
     "article:pipeline": "tsx scripts/run-daily-article-pipeline.ts",
     "article:daily-check": "node scripts/daily-publish-check.mjs",
+    "news:publish": "node scripts/news-publish.mjs",
     "test": "vitest run"
   },
   "dependencies": {
