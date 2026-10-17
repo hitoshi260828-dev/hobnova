@@ -18,7 +18,7 @@ export function extensionForMimeType(mimeType: AllowedImageMimeType): string {
 // 将来の高解像度化や社内外からの投入を見込み、安全側に余裕を持たせた上限。
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
-const CONTENT_DIRS = ['src/content/articles/', 'src/content/data-lab/', 'src/content/tools/'] as const;
+const CONTENT_DIRS = ['src/content/articles/', 'src/content/data-lab/', 'src/content/tools/', 'src/content/news/'] as const;
 
 export interface ArticlePathValidation {
   valid: boolean;

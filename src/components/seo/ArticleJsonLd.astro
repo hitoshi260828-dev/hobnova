@@ -8,16 +8,27 @@ interface Props {
   updatedDate?: Date;
   image?: string;
   author?: string;
+  // NEWSページではNewsArticleを使う（Google News掲載等を保証するものではなく、あくまで
+  // schema.orgの語彙としてより実態に即したtypeを選べるようにするだけ）。既定はArticle。
+  schemaType?: 'Article' | 'NewsArticle';
 }
 
-const { title, description, publishDate, updatedDate, image, author = 'HOBNOVA編集部' } = Astro.props;
+const {
+  title,
+  description,
+  publishDate,
+  updatedDate,
+  image,
+  author = 'HOBNOVA編集部',
+  schemaType = 'Article',
+} = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
 const imageURL = new URL(image ?? DEFAULT_OG_IMAGE, Astro.site).toString();
 
 const articleSchema = {
   '@context': 'https://schema.org',
-  '@type': 'Article',
+  '@type': schemaType,
   headline: title,
   description,
   image: imageURL,
