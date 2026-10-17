@@ -21,7 +21,7 @@ import {
   type TreeEntry,
 } from './github-client';
 import { findHeadings, insertInlineImage, isAlreadyInserted, resolveInsertPosition } from './inline-image-insert';
-import { bytesToBase64, validateArticlePath, validateImageInput, type ImageInputArgs } from './image-validate';
+import { bytesToBase64, resolveImageInput, validateArticlePath, type ImageInputArgs } from './image-validate';
 import { BASE_BRANCH, decodeBase64Utf8, HOBNOVA_REPO, humanizeSlug } from './cover-publish';
 
 const INLINE_FILENAME_PATTERN = /^inline-(\d+)\.(png|jpe?g|webp)$/i;
@@ -83,7 +83,7 @@ export async function publishInlineImage(env: GitHubAuthEnv, args: PublishInline
   const articlePath = args.article_path as string;
   const slug = pathCheck.slug;
 
-  const imageCheck = validateImageInput(args.image);
+  const imageCheck = await resolveImageInput(args.image);
   if (!imageCheck.valid || !imageCheck.bytes || !imageCheck.extension) {
     return errorResult('invalid_image', imageCheck.error ?? 'invalid image');
   }

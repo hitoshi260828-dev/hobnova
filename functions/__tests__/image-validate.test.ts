@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { bytesToBase64, validateArticlePath, validateImageInput, MAX_IMAGE_BYTES } from '../_lib/image-validate';
+import { describe, expect, it, vi } from 'vitest';
+import { bytesToBase64, resolveImageInput, validateArticlePath, validateImageInput, MAX_IMAGE_BYTES } from '../_lib/image-validate';
 
 const PNG_BYTES = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0xff, 0xff,
@@ -127,6 +127,91 @@ describe('validateImageInput', () => {
 
   it('data未指定なら拒否する', () => {
     expect(validateImageInput({ mime_type: 'image/png' }).valid).toBe(false);
+  });
+});
+
+describe('resolveImageInput', () => {
+  function fakeResponse(bytes: Uint8Array, { ok = true, status = 200, contentLength }: { ok?: boolean; status?: number; contentLength?: number } = {}) {
+    return {
+      ok,
+      status,
+      headers: { get: (name: string) => (name === 'content-length' && contentLength !== undefined ? String(contentLength) : null) },
+      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    } as unknown as Response;
+  }
+
+  it('download_urlが無ければ既存のBase64経路（validateImageInput）にフォールバックする', async () => {
+    const result = await resolveImageInput({ data: bytesToBase64(PNG_BYTES), mime_type: 'image/png' });
+    expect(result.valid).toBe(true);
+    expect(result.extension).toBe('png');
+  });
+
+  it('download_urlをfetchし、mime_type宣言込みで受け付ける', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(PNG_BYTES));
+    const result = await resolveImageInput(
+      { download_url: 'https://files.chatgpt.example/abc', mime_type: 'image/png', file_id: 'file-123' },
+      { fetchImpl }
+    );
+    expect(fetchImpl).toHaveBeenCalledWith('https://files.chatgpt.example/abc');
+    expect(result.valid).toBe(true);
+    expect(result.extension).toBe('png');
+    expect(result.bytes?.length).toBe(PNG_BYTES.length);
+  });
+
+  it('mime_type省略時はマジックバイトから推測する', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(JPEG_BYTES));
+    const result = await resolveImageInput({ download_url: 'https://files.chatgpt.example/abc' }, { fetchImpl });
+    expect(result.valid).toBe(true);
+    expect(result.extension).toBe('jpg');
+  });
+
+  it('download_urlのfetchが失敗したら拒否する', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('network error'));
+    const result = await resolveImageInput({ download_url: 'https://files.chatgpt.example/abc' }, { fetchImpl });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/failed to fetch/);
+  });
+
+  it('download_urlが非200を返したら拒否する', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(new Uint8Array(), { ok: false, status: 404 }));
+    const result = await resolveImageInput({ download_url: 'https://files.chatgpt.example/abc' }, { fetchImpl });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/404/);
+  });
+
+  it('content-lengthヘッダでサイズ上限超過を検出する', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(PNG_BYTES, { contentLength: MAX_IMAGE_BYTES + 1 }));
+    const result = await resolveImageInput({ download_url: 'https://files.chatgpt.example/abc' }, { fetchImpl });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/exceeds max size/);
+  });
+
+  it('実バイト数がサイズ上限を超えたら拒否する（content-lengthが無い/不正な場合でも）', async () => {
+    const big = new Uint8Array(MAX_IMAGE_BYTES + 1);
+    big.set(PNG_BYTES);
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(big));
+    const result = await resolveImageInput({ download_url: 'https://files.chatgpt.example/abc' }, { fetchImpl });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/exceeds max size/);
+  });
+
+  it('マジックバイトと宣言されたmime_typeが一致しなければ拒否する（偽装防止はdownload_url経路でも効く）', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(SVG_AS_PNG_BYTES));
+    const result = await resolveImageInput({ download_url: 'https://files.chatgpt.example/abc', mime_type: 'image/png' }, { fetchImpl });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/do not match declared mime_type/);
+  });
+
+  it('マジックバイトから推測できない形式（SVG等）は拒否する', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(SVG_AS_PNG_BYTES));
+    const result = await resolveImageInput({ download_url: 'https://files.chatgpt.example/abc' }, { fetchImpl });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/could not determine/);
+  });
+
+  it('空のimageを拒否する', async () => {
+    const result = await resolveImageInput(undefined);
+    expect(result.valid).toBe(false);
   });
 });
 

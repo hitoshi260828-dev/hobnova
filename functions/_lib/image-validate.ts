@@ -78,6 +78,13 @@ export interface ImageInputValidation {
 export interface ImageInputArgs {
   data?: unknown;
   mime_type?: unknown;
+  // OpenAI MCP connectorの`_meta["openai/fileParams"]`経由で渡されるファイル参照形式。
+  // ChatGPTが添付画像をBase64で手動シリアライズする代わりに、一時ダウンロードURLを
+  // 発行してくる場合に使う（resolveImageInputが対応、validateImageInputは後方互換の
+  // 生Base64専用経路として残す）。
+  download_url?: unknown;
+  file_id?: unknown;
+  file_name?: unknown;
 }
 
 /**
@@ -163,6 +170,73 @@ function matchesMagicBytes(bytes: Uint8Array, mimeType: AllowedImageMimeType): b
         bytes[11] === 0x50
       );
   }
+}
+
+function inferMimeTypeFromBytes(bytes: Uint8Array): AllowedImageMimeType | null {
+  for (const mime of ALLOWED_IMAGE_MIME_TYPES) {
+    if (matchesMagicBytes(bytes, mime)) return mime;
+  }
+  return null;
+}
+
+/**
+ * image入力を解決する。`download_url`があれば（OpenAI MCP connectorの
+ * `_meta["openai/fileParams"]`経由のファイル参照）サーバー側でfetchしてバイト列を取得する
+ * ——ChatGPT（モデル）がBase64を手でシリアライズする必要がなくなり、「ダウンロード→
+ * ローカル保存→Base64変換→再アップロード」をユーザーに要求しない構成になる。
+ * `download_url`が無ければ既存のvalidateImageInput（生Base64）へフォールバックする。
+ */
+export async function resolveImageInput(
+  image: ImageInputArgs | undefined,
+  options: { fetchImpl?: typeof fetch } = {}
+): Promise<ImageInputValidation> {
+  if (!image || typeof image !== 'object') {
+    return { valid: false, error: 'image is required' };
+  }
+
+  const downloadUrl = typeof image.download_url === 'string' && image.download_url.length > 0 ? image.download_url : undefined;
+  if (!downloadUrl) {
+    return validateImageInput(image);
+  }
+
+  const fetchFn = options.fetchImpl ?? fetch;
+  let response: Response;
+  try {
+    response = await fetchFn(downloadUrl);
+  } catch (err) {
+    return { valid: false, error: `failed to fetch download_url: ${(err as Error).message}` };
+  }
+  if (!response.ok) {
+    return { valid: false, error: `download_url returned HTTP ${response.status}` };
+  }
+
+  const contentLength = response.headers.get('content-length');
+  if (contentLength && Number(contentLength) > MAX_IMAGE_BYTES) {
+    return { valid: false, error: `image exceeds max size of ${MAX_IMAGE_BYTES} bytes` };
+  }
+
+  const buffer = await response.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length === 0) {
+    return { valid: false, error: 'downloaded image is empty' };
+  }
+  if (bytes.length > MAX_IMAGE_BYTES) {
+    return { valid: false, error: `image exceeds max size of ${MAX_IMAGE_BYTES} bytes` };
+  }
+
+  const declaredMimeType =
+    typeof image.mime_type === 'string' && (ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(image.mime_type)
+      ? (image.mime_type as AllowedImageMimeType)
+      : undefined;
+  const mimeType = declaredMimeType ?? inferMimeTypeFromBytes(bytes);
+  if (!mimeType) {
+    return { valid: false, error: 'could not determine a supported mime_type for the downloaded image' };
+  }
+  if (!matchesMagicBytes(bytes, mimeType)) {
+    return { valid: false, error: 'image bytes do not match declared mime_type' };
+  }
+
+  return { valid: true, bytes, extension: extensionForMimeType(mimeType) };
 }
 
 export function bytesToBase64(bytes: Uint8Array): string {

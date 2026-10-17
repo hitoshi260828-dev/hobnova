@@ -80,9 +80,15 @@ describe('buildNewsMarkdown', () => {
     expect(() => buildNewsMarkdown({ ...BASE_INPUT, items: [] })).toThrow(/items/);
   });
 
-  it('coverRelativePathが無い場合はエラーを投げる（画像なし記事の防止）', () => {
+  it('coverRelativePathが無い場合はエラーを投げず、cover待ち（draft: true、cover:フィールド無し）として組み立てる', () => {
+    // 2026-10-18改訂: OpenAI Image APIをNEWS標準ルートから外し、ChatGPT + HOBNOVA MCP
+    // （publish_generated_image）でcoverを後付けする方針にしたため、ここではthrowしない
+    // ——「画像なしでは本番表示されない」という不変条件は、draft: trueによる非公開化で
+    // 担保する（functions/_lib/cover-publish.tsがcover追加時にdraft: falseへ切り替える）。
     const { coverRelativePath, ...withoutCover } = BASE_INPUT;
-    expect(() => buildNewsMarkdown(withoutCover as never)).toThrow(/coverRelativePath/);
+    const md = buildNewsMarkdown(withoutCover as never);
+    expect(md).not.toMatch(/^cover:/m);
+    expect(md).toContain('draft: true');
   });
 
   it('タイトル・説明文に二重引用符や特殊文字が含まれてもYAMLとして安全にエスケープされる', () => {

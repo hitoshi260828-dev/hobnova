@@ -27,9 +27,14 @@ export function buildNewsMarkdown(input) {
   if (!Array.isArray(input.items) || input.items.length === 0) {
     throw new Error("buildNewsMarkdown: items must contain at least one news item");
   }
-  if (!input.coverRelativePath) {
-    throw new Error("buildNewsMarkdown: coverRelativePath is required (cover must exist before writing the article)");
-  }
+
+  // 2026-10-18改訂: coverRelativePathは必須ではない。OpenAI Image APIをNEWS標準ルートから
+  // 外し、ChatGPT + HOBNOVA MCP（publish_generated_image）でcoverを後付けする方針に変更した
+  // ため。cover未定の間は`draft: true`で非公開のまま（= 画像なしでは絶対に本番表示されない）
+  // にし、cover-publish.ts（functions/_lib/cover-publish.ts）がcover追加と同じcommitで
+  // `draft: false`へ切り替える。coverRelativePathが渡された場合（将来の別経路・テスト用）は
+  // そのまま即時公開として組み立てる。
+  const hasCover = Boolean(input.coverRelativePath);
 
   const sourcesYaml = input.items
     .map((item) => {
@@ -46,12 +51,12 @@ export function buildNewsMarkdown(input) {
     `description: ${yamlString(input.description)}`,
     `publishedAt: ${input.publishedAtIso}`,
     `edition: ${input.edition}`,
-    `cover: ${yamlString(input.coverRelativePath)}`,
+    hasCover ? `cover: ${yamlString(input.coverRelativePath)}` : null,
     "topics:",
     ...topics.map((t) => `  - ${t}`),
     input.summary ? `summary: ${yamlString(input.summary)}` : null,
     `sourceCount: ${input.items.length}`,
-    "draft: false",
+    `draft: ${hasCover ? "false" : "true"}`,
     "sources:",
     sourcesYaml,
     "---",

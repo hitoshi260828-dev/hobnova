@@ -242,4 +242,22 @@ describe('publishCover', () => {
     expect(JSON.stringify(result)).not.toContain('test-token');
     expect(JSON.stringify(result)).not.toContain('resolved-token');
   });
+
+  it('NEWS記事（cover待ち、draft: true）にcoverを追加すると、cover:フィールド（image:ではない）を書き、draft: falseへ切り替える', async () => {
+    const newsPendingCoverMd =
+      '---\ntitle: "朝のニュース"\ndescription: "desc"\npublishedAt: 2026-10-20T08:00:00+09:00\nedition: morning\ndraft: true\n---\n\n本文\n';
+    getFileContentsMock.mockResolvedValue({ sha: 'filesha', content: encodeContent(newsPendingCoverMd), encoding: 'base64' });
+
+    const result = await publishCover(ENV, {
+      article_path: 'src/content/news/2026-10-20-morning.md',
+      image: { data: PNG_BASE64, mime_type: 'image/png' },
+    });
+
+    expect(result.status).toBe('success');
+    const markdownBlobCall = createBlobMock.mock.calls.find((call) => (call[2] as string).length > 100);
+    const writtenMarkdown = decodeURIComponent(escape(atob(markdownBlobCall![2] as string)));
+    expect(writtenMarkdown).toMatch(/^cover: "\.\/2026-10-20-morning-hero\.png"$/m);
+    expect(writtenMarkdown).not.toMatch(/^image:/m);
+    expect(writtenMarkdown).toMatch(/^draft: false$/m);
+  });
 });
