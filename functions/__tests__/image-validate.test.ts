@@ -29,6 +29,13 @@ describe('validateArticlePath', () => {
     expect(result.valid).toBe(true);
   });
 
+  it('news配下の.mdを許可する（将来のニュース朝夜自動投稿向け）', () => {
+    const result = validateArticlePath('src/content/news/2026-10-18-morning.md');
+    expect(result.valid).toBe(true);
+    expect(result.slug).toBe('2026-10-18-morning');
+    expect(result.dir).toBe('src/content/news/');
+  });
+
   it('許可されていないディレクトリは拒否する', () => {
     expect(validateArticlePath('src/pages/index.astro').valid).toBe(false);
     expect(validateArticlePath('functions/api/mcp.ts').valid).toBe(false);

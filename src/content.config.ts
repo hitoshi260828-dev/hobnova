@@ -105,8 +105,13 @@ const tools = defineCollection({
 // NEWS: 朝刊/夕刊まとめ記事専用コレクション（通常記事とは用途・公開頻度・判定方法が異なるため分離）。
 // ファイル名を `{YYYY-MM-DD}-{edition}.md`（例: 2026-10-18-morning.md）に統一することで、
 // スラッグ自体が日付+editionの一意キーになる（他コレクション同様、slugはfrontmatterへ持たせず
-// ファイル名をそのまま使う）。これにより将来の自動投稿が同日・同editionの記事を二重作成しようと
-// すると、同一ファイルパスへの書き込みになり自然に衝突検出できる。
+// ファイル名をそのまま使う）。ただし「同一ファイルパスへの書き込みは自然に衝突する」が成立する
+// かどうかは、将来の自動投稿がどのGitHub書き込み方式を使うかに依存する点に注意。Contents API
+// （`PUT /contents/{path}`）はsha未指定時に既存ファイルへの上書きを拒否するため安全だが、
+// 本リポジトリの既存実装（functions/_lib/cover-publish.ts 等）が使うGit Data API
+// （blob/tree直接構築）は、同じpathのtree entryを**無言で上書き**する。将来この命名規約に
+// 依存した二重投稿防止を実装する場合は、書き込み前に当該pathの既存ファイル有無を
+// 明示的に確認するロジックを別途必ず入れること（ファイル名だけでは自動的に守られない）。
 //
 // daily-publish-check.mjs（scripts/lib/github-pr.mjs のCONTENT_PATH）は意図的に
 // articles/data-lab/tools のみを対象とし、news/ は含めていない。通常記事（1日1本、JST12:00）と

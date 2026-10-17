@@ -29,7 +29,7 @@ export interface ArticlePathValidation {
 }
 
 /**
- * article_path が許可された3コレクション配下の .md/.mdx であり、
+ * article_path が許可されたコレクション（articles/data-lab/tools/news）配下の .md/.mdx であり、
  * path traversal（`..`、絶対パス、null byte等）を含まないことを検証する。
  */
 export function validateArticlePath(articlePath: unknown): ArticlePathValidation {
@@ -51,7 +51,7 @@ export function validateArticlePath(articlePath: unknown): ArticlePathValidation
 
   const dir = CONTENT_DIRS.find((d) => articlePath.startsWith(d));
   if (!dir) {
-    return { valid: false, error: 'article_path must be under src/content/articles|data-lab|tools' };
+    return { valid: false, error: 'article_path must be under src/content/articles|data-lab|tools|news' };
   }
 
   const rest = articlePath.slice(dir.length);
