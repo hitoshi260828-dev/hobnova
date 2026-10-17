@@ -138,12 +138,42 @@ function validateResearchResult(parsed) {
   return parsed;
 }
 
+// sourceUrlが実在するホストへ実際に解決するかをHTTPで確認する。
+// 実例（2026-10-17、PR #62の品質レビューで発見）: web_searchの結果からURLを組み立てる際、
+// 本物の総務省発表（www.soumu.go.jp）のパスがIPリテラルのハルシネートされたホスト名
+// （###.###.###.###.static.iijgio.jp）に紛れ込み、構文的には正しいURLだがクリックすると
+// 無関係のサーバーでTLSホスト名不一致の警告が出る、という事故が実際に発生した。
+// `new URL()`での構文チェックだけではこの種の不一致を検出できない。デフォルトのTLS証明書
+// 検証を無効化しないfetch()は、ホスト名不一致の証明書を提示するサーバーへの接続を
+// 自動的に拒否する（Node.jsの標準動作）ため、これを実URL到達性チェックとして利用する。
+async function verifySourceUrlResolves(url, { fetchImpl = fetch, timeoutMs = 8000 } = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(url, { method: "HEAD", redirect: "follow", signal: controller.signal });
+    if (res.ok || (res.status >= 300 && res.status < 400)) return true;
+    if (res.status === 405) {
+      // HEADを許可しないサーバーもある。GETで再確認する。
+      const getRes = await fetchImpl(url, { method: "GET", redirect: "follow", signal: controller.signal });
+      return getRes.ok;
+    }
+    return false;
+  } catch {
+    // ネットワークエラー・TLS証明書のホスト名不一致・タイムアウト等はすべて「解決できない
+    // URL」として扱う。
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /**
  * ニュースを収集し記事内容を生成する。実際にOpenAI APIを呼び出す（課金が発生する）。
  * @param {{ edition: "morning"|"evening", date: string, excludeUrls: string[] }} options
  * @param {{ apiKey: string, model: string }} config
+ * @param {{ fetchImpl?: typeof fetch }} [httpOptions] テスト用のfetch差し替え。
  */
-export async function researchNews(options, config) {
+export async function researchNews(options, config, httpOptions = {}) {
   const client = new OpenAI({ apiKey: config.apiKey });
   const prompt = buildPrompt(options);
 
@@ -157,7 +187,20 @@ export async function researchNews(options, config) {
   if (!text) throw new Error("OpenAI response contained no output_text");
 
   const parsed = extractJson(text);
-  return validateResearchResult(parsed);
+  const validated = validateResearchResult(parsed);
+
+  const checks = await Promise.all(
+    validated.items.map(async (item) => ({ item, resolves: await verifySourceUrlResolves(item.sourceUrl, httpOptions) }))
+  );
+  const rejectedSources = checks.filter((c) => !c.resolves).map((c) => c.item);
+  validated.items = checks.filter((c) => c.resolves).map((c) => c.item);
+  if (validated.items.length === 0) {
+    throw new Error("research result: no item had a sourceUrl that actually resolves (all rejected by verifySourceUrlResolves)");
+  }
+  // news-publish.mjs側でのログ用（markdown組み立てには使わない）。
+  validated.rejectedSources = rejectedSources;
+
+  return validated;
 }
 
 export { buildPrompt as buildNewsResearchPrompt };
