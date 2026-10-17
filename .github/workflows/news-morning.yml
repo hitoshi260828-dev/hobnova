@@ -1,38 +1,32 @@
-name: NEWS publish (morning/evening)
+name: NEWS publish (morning)
 
-# NEWS朝版/夜版の自動投稿。通常記事（daily-publish-check.yml、JST12:00、1日1本）とは
+# NEWS朝版の自動投稿。通常記事（daily-publish-check.yml、JST12:00、1日1本）とは
 # scheduler・対象ディレクトリ・PR検出方式のいずれも完全に独立している。
+# 夜版はnews-evening.ymlという別ファイル（朝夜で分離。ログ・失敗箇所の分離、再実行の
+# しやすさ、将来の投稿時刻変更のしやすさを優先した設計。1つのworkflowでschedule時刻から
+# editionを判定する方式は、cron文字列依存の曖昧な分岐になるため避けた）。
 #
-# 提案する投稿時刻（まだschedule登録はしていない。下記コメントアウトを参照）:
-#   朝版: JST 07:30 = UTC 22:30（前日）  -- 1日を始める前に読める時間、深夜〜早朝の動きを含められる
-#   夜版: JST 19:30 = UTC 10:30         -- 日本市場の引け後・帰宅〜夕食時間帯、1日の動きを総括できる
-#   通常記事 JST 12:00 とは重ならない。
+# 方針（2026-10-18改訂）: news-publish.mjsはPR作成までしか行わない。mainへのmergeは必ず
+# 人間が行う（docs/ai-article-guidelines.md 9章）。このworkflow自体も同様にmergeを行わない。
+#
+# 提案する投稿時刻: JST 07:30 = UTC 22:30（前日） -- 1日を始める前に読める時間。
+# 通常記事 JST 12:00 とは重ならない。
 #
 # 重要: 現時点では workflow_dispatch のみで、schedule トリガーは意図的に未登録。
-# このworkflow（= news-publish.mjs）はDRY_RUNでしか動作検証していないため、実行するたびに
-# OpenAI APIへの課金が発生する本番実行を無人のcronで走らせる前に、まず人間が明示的に
-# workflow_dispatchで最低1回成功を確認してから、下記のschedule行をコメント解除して
-# 有効化することを想定している。
+# このworkflow（= news-publish.mjs）は実際の本番PR作成をworkflow_dispatchで最低1回
+# 確認してから、下記のschedule行をコメント解除して有効化することを想定している。
 on:
   # schedule:
   #   - cron: '30 22 * * *' # UTC 22:30 = JST 07:30（朝版）
-  #   - cron: '30 10 * * *' # UTC 10:30 = JST 19:30（夜版）
   workflow_dispatch:
     inputs:
-      edition:
-        description: "朝版 or 夜版"
-        required: true
-        type: choice
-        options:
-          - morning
-          - evening
       dry_run:
         description: "trueにするとOpenAI APIを呼ばず、GitHubへの書き込みも行わない"
         required: false
         default: true
         type: boolean
       skip_publish:
-        description: "trueにするとPR作成まで行い、自動マージはしない"
+        description: "trueにすると記事生成まで行い、commit/push/PR作成は行わない"
         required: false
         default: false
         type: boolean
@@ -46,7 +40,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: news-publish-${{ inputs.edition }}
+  group: news-publish-morning
   cancel-in-progress: false
 
 jobs:
@@ -62,8 +56,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "npm"
 
-      - name: Run news publish
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Run news publish (morning)
         env:
           GH_TOKEN: ${{ github.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -71,7 +69,7 @@ jobs:
           NEWS_IMAGE_MODEL: ${{ vars.NEWS_IMAGE_MODEL }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
-          EDITION: ${{ inputs.edition }}
+          EDITION: morning
           DRY_RUN: ${{ inputs.dry_run }}
           SKIP_PUBLISH: ${{ inputs.skip_publish }}
           FORCE_DATE: ${{ inputs.force_date }}

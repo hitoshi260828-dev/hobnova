@@ -1,0 +1,74 @@
+name: NEWS publish (evening)
+
+# NEWS夜版の自動投稿。朝版はnews-morning.ymlという別ファイル（分離の理由はそちらのコメント
+# 参照）。通常記事（daily-publish-check.yml、JST12:00、1日1本）とはscheduler・対象ディレクトリ・
+# PR検出方式のいずれも完全に独立している。
+#
+# 方針（2026-10-18改訂）: news-publish.mjsはPR作成までしか行わない。mainへのmergeは必ず
+# 人間が行う（docs/ai-article-guidelines.md 9章）。このworkflow自体も同様にmergeを行わない。
+#
+# 提案する投稿時刻: JST 19:30 = UTC 10:30 -- 日本市場の引け後・帰宅〜夕食時間帯。
+# 通常記事 JST 12:00 とは重ならない。
+#
+# 重要: 現時点では workflow_dispatch のみで、schedule トリガーは意図的に未登録。
+# このworkflow（= news-publish.mjs）は実際の本番PR作成をworkflow_dispatchで最低1回
+# 確認してから、下記のschedule行をコメント解除して有効化することを想定している。
+on:
+  # schedule:
+  #   - cron: '30 10 * * *' # UTC 10:30 = JST 19:30（夜版）
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "trueにするとOpenAI APIを呼ばず、GitHubへの書き込みも行わない"
+        required: false
+        default: true
+        type: boolean
+      skip_publish:
+        description: "trueにすると記事生成まで行い、commit/push/PR作成は行わない"
+        required: false
+        default: false
+        type: boolean
+      force_date:
+        description: "テスト用。YYYY-MM-DD形式で「今日」を上書きする（省略時はJSTの実日付）"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: news-publish-evening
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Run news publish (evening)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          NEWS_TEXT_MODEL: ${{ vars.NEWS_TEXT_MODEL }}
+          NEWS_IMAGE_MODEL: ${{ vars.NEWS_IMAGE_MODEL }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+          EDITION: evening
+          DRY_RUN: ${{ inputs.dry_run }}
+          SKIP_PUBLISH: ${{ inputs.skip_publish }}
+          FORCE_DATE: ${{ inputs.force_date }}
+        run: node scripts/news-publish.mjs
