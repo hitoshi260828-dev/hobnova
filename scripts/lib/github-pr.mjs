@@ -22,6 +22,12 @@ async function getPrView(prNumber) {
   return ghJson(["pr", "view", String(prNumber), "--json", "url,headRefOid,comments,title,body"]);
 }
 
+/** PRのURLだけを取得する（Preview検出に失敗した場合のフォールバック通知用）。 */
+export async function getPrUrl(prNumber) {
+  const data = await getPrView(prNumber);
+  return data.url;
+}
+
 function marker(headSha, state) {
   return `<!-- ${NOTIFICATION_MARKER}:${headSha}:${state} -->`;
 }
@@ -64,7 +70,7 @@ export async function getChangedArticle(prNumber, headSha) {
  * Cloudflare botの実際のPRコメント形式を使う。現在のhead SHA、Deploy successful、
  * Preview URLの3つが同じコメントに揃うまで待つため、古いPreviewを通知しない。
  */
-export async function waitForCloudflarePreview(prNumber, headSha, { timeoutMs = 10 * 60 * 1000, pollIntervalMs = 10000 } = {}) {
+export async function waitForCloudflarePreview(prNumber, headSha, { timeoutMs = 20 * 60 * 1000, pollIntervalMs = 10000 } = {}) {
   const start = Date.now();
   while (true) {
     const data = await getPrView(prNumber);
@@ -80,7 +86,10 @@ export async function waitForCloudflarePreview(prNumber, headSha, { timeoutMs = 
       }
     }
     if (Date.now() - start >= timeoutMs) {
-      throw new Error(`Cloudflare Pages Previewが${timeoutMs}ms以内に成功しませんでした。`);
+      // 2026-10-09、PR #57でこの条件がthrowになっていたため通知自体が完全に失われ、
+      // CI green・マージ可能な記事PRが8日間気づかれず放置された実績がある。
+      // 呼び出し元がフォールバック通知を送れるよう、例外ではなく結果として返す。
+      return { timedOut: true, prUrl: data.url };
     }
     await sleep(pollIntervalMs);
   }
@@ -110,4 +119,69 @@ export async function completeNotification(commentId, headSha) {
 
 export async function releaseNotification(commentId) {
   await ghJson(["api", `repos/{owner}/{repo}/issues/comments/${commentId}`, "--method", "DELETE"]);
+}
+
+// --- 日次公開チェック（daily-publish-check.mjs）向けヘルパー ---
+
+/**
+ * src/content/ 配下を変更しているopen・非draftのPRを、作成日の古い順で返す
+ * （長く放置されているPRから先に確認するため）。画像のみのPR（cover/inline追加PR）は
+ * 除外しない——既存記事へのcover追加もここでは「公開対象の変更」として扱う。
+ */
+export async function listOpenContentPRs() {
+  const prs = await ghJson([
+    "pr", "list", "--state", "open", "--json",
+    "number,title,createdAt,isDraft,headRefName,files",
+    "--limit", "100",
+  ]);
+  return (prs ?? [])
+    .filter((pr) => !pr.isDraft)
+    .filter((pr) => (pr.files ?? []).some((f) => CONTENT_PATH.test(f.path)))
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+}
+
+/** PRがCI green・Cloudflare Pages green・クリーンにマージ可能かを確認する。 */
+export async function getPrMergeSafety(prNumber) {
+  const data = await ghJson([
+    "pr", "view", String(prNumber), "--json",
+    "mergeable,mergeStateStatus,statusCheckRollup",
+  ]);
+  const checks = data.statusCheckRollup ?? [];
+  const ciSuccess = checks.some((c) => c.name === "astro check & build" && c.conclusion === "SUCCESS");
+  const cloudflareCheck = checks.find((c) => c.name === "Cloudflare Pages");
+  const cloudflareSuccess = !cloudflareCheck || cloudflareCheck.conclusion === "SUCCESS";
+  return {
+    mergeable: data.mergeable === "MERGEABLE" && data.mergeStateStatus === "CLEAN",
+    ciSuccess,
+    cloudflareSuccess,
+  };
+}
+
+/** squash mergeする（既存のPR運用と同じ方式、branchは削除しない）。 */
+export async function squashMergePR(prNumber) {
+  await execFileAsync("gh", ["pr", "merge", String(prNumber), "--squash", "--delete-branch=false"], {
+    env: process.env,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  const data = await ghJson(["pr", "view", String(prNumber), "--json", "mergeCommit,url"]);
+  return { commitSha: data.mergeCommit?.oid ?? null, prUrl: data.url };
+}
+
+/**
+ * 指定commit（通常はmainの最新）に対するCloudflare Pages本番デプロイの完了を待つ。
+ * PR Previewとは別の、mainへのpush後に動く本番デプロイのcheck-runを見る。
+ */
+export async function waitForProductionDeploy(sha, { timeoutMs = 10 * 60 * 1000, pollIntervalMs = 10000 } = {}) {
+  const start = Date.now();
+  while (true) {
+    const data = await ghJson(["api", `repos/{owner}/{repo}/commits/${sha}/check-runs`]);
+    const cloudflare = (data.check_runs ?? []).find((c) => c.name === "Cloudflare Pages");
+    if (cloudflare?.status === "completed") {
+      return { completed: true, success: cloudflare.conclusion === "success" };
+    }
+    if (Date.now() - start >= timeoutMs) {
+      return { completed: false, success: false };
+    }
+    await sleep(pollIntervalMs);
+  }
 }
