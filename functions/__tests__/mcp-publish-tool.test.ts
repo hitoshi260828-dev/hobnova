@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const validateAccessTokenMock = vi.fn();
 const publishCoverMock = vi.fn();
+const publishInlineImageMock = vi.fn();
 
 vi.mock('../_lib/oauth', async () => {
   const actual = await vi.importActual<typeof import('../_lib/oauth')>('../_lib/oauth');
@@ -11,6 +12,11 @@ vi.mock('../_lib/oauth', async () => {
 vi.mock('../_lib/cover-publish', async () => {
   const actual = await vi.importActual<typeof import('../_lib/cover-publish')>('../_lib/cover-publish');
   return { ...actual, publishCover: publishCoverMock };
+});
+
+vi.mock('../_lib/inline-publish', async () => {
+  const actual = await vi.importActual<typeof import('../_lib/inline-publish')>('../_lib/inline-publish');
+  return { ...actual, publishInlineImage: publishInlineImageMock };
 });
 
 const { onRequestPost } = await import('../api/mcp');
@@ -97,6 +103,49 @@ describe('POST /api/mcp — publish_generated_image wiring', () => {
 
     const body = (await res.json()) as any;
     expect(body.result.isError).toBe(true);
+  });
+
+  it('type: inlineの場合はinline-publish.publishInlineImageを呼ぶ（publishCoverは呼ばない）', async () => {
+    validateAccessTokenMock.mockResolvedValue({ id: 1, client_id: 'c', resource: null, scope: null });
+    publishInlineImageMock.mockResolvedValue({
+      status: 'success',
+      article_path: 'src/content/articles/laptop-buying-guide.md',
+      image_path: 'public/images/articles/laptop-buying-guide/inline-01.jpg',
+      reference_path: '/images/articles/laptop-buying-guide/inline-01.jpg',
+      heading: '製品の比較ポイント',
+      branch: 'feat/chatgpt-inline-laptop-buying-guide-123',
+      commit_sha: 'sha1',
+      pr_number: 61,
+      pr_url: 'https://github.com/x/y/pull/61',
+      mergeable: null,
+    });
+
+    const res = await onRequestPost({
+      request: rpcRequest({
+        jsonrpc: '2.0',
+        id: 4,
+        method: 'tools/call',
+        params: {
+          name: 'publish_generated_image',
+          arguments: {
+            article_path: 'src/content/articles/laptop-buying-guide.md',
+            image: { data: 'ZmFrZQ==', mime_type: 'image/jpeg' },
+            type: 'inline',
+            after_heading: '製品の比較ポイント',
+          },
+        },
+      }),
+      env: ENV,
+    } as never);
+
+    const body = (await res.json()) as any;
+    expect(publishInlineImageMock).toHaveBeenCalledWith(
+      ENV,
+      expect.objectContaining({ article_path: 'src/content/articles/laptop-buying-guide.md', type: 'inline' })
+    );
+    expect(publishCoverMock).not.toHaveBeenCalled();
+    const content = JSON.parse(body.result.content[0].text);
+    expect(content.pr_number).toBe(61);
   });
 
   it('Bearerトークンが無ければ401を返し、publishCoverを呼ばない', async () => {
