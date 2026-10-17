@@ -1,0 +1,33 @@
+---
+// /news/ 一覧・トピック別一覧で共通利用するニュース記事カード。
+import type { CollectionEntry } from 'astro:content';
+import Card from '../ui/Card.astro';
+import Badge from '../ui/Badge.astro';
+import ImagePlaceholder from '../ui/ImagePlaceholder.astro';
+import { NEWS_EDITIONS, NEWS_TOPICS } from '../../consts';
+import { formatDateTime } from '../../lib/format';
+
+interface Props {
+  entry: CollectionEntry<'news'>;
+}
+
+const { entry } = Astro.props;
+const { title, description, publishedAt, edition, topics, cover } = entry.data;
+const editionMeta = NEWS_EDITIONS[edition];
+const topicMetas = topics.map((id) => NEWS_TOPICS.find((t) => t.id === id)).filter((t) => t !== undefined);
+---
+
+<Card href={`/news/${entry.id}/`}>
+  <ImagePlaceholder slot="media" image={cover} alt={title} aspect="aspect-[16/10]" />
+  <div class="flex flex-wrap items-center gap-1.5">
+    <Badge class={edition === 'morning' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-indigo-200 bg-indigo-50 text-indigo-800'}>
+      {editionMeta.labelEn} {editionMeta.labelJa}
+    </Badge>
+    {topicMetas.slice(0, 3).map((t) => (
+      <Badge>{t!.labelJa}</Badge>
+    ))}
+  </div>
+  <h2 class="mt-3 line-clamp-2 text-base font-semibold text-navy">{title}</h2>
+  <p class="mt-2 line-clamp-2 text-sm text-charcoal/70">{description}</p>
+  <p class="mt-4 text-xs text-charcoal/50">{formatDateTime(publishedAt)}</p>
+</Card>

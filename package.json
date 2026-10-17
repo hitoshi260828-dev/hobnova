@@ -15,10 +15,12 @@
     "images:generate": "tsx scripts/generate-article-images.ts",
     "images:import": "tsx scripts/import-generated-image.ts",
     "article:pipeline": "tsx scripts/run-daily-article-pipeline.ts",
+    "article:daily-check": "node scripts/daily-publish-check.mjs",
     "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.8",
+    "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.3",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/noto-sans-jp": "^5.3.0",

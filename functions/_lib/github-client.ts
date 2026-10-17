@@ -284,6 +284,32 @@ export async function getFileContents(
   return res.json() as Promise<ContentsResponse>;
 }
 
+export interface DirectoryEntry {
+  name: string;
+  type: string;
+}
+
+/**
+ * 指定refでのディレクトリ一覧を取得する。存在しなければnull（404を例外にしない）。
+ * 対象pathがディレクトリでなくファイルだった場合もnullを返す（GitHub Contents APIは
+ * ファイルの場合オブジェクト単体を返し配列にならないため、配列でなければ不整合として扱う）。
+ */
+export async function listDirectory(
+  token: string,
+  repo: GitHubRepoRef,
+  path: string,
+  ref: string
+): Promise<DirectoryEntry[] | null> {
+  const res = await githubFetch(
+    token,
+    `/repos/${repo.owner}/${repo.repo}/contents/${path}?ref=${encodeURIComponent(ref)}`
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new GitHubApiError(`Failed to list ${path}: ${res.status}`, res.status);
+  const data = await res.json();
+  return Array.isArray(data) ? (data as DirectoryEntry[]) : null;
+}
+
 export async function createBlob(token: string, repo: GitHubRepoRef, base64Content: string): Promise<string> {
   const data = await githubJson<{ sha: string }>(token, `/repos/${repo.owner}/${repo.repo}/git/blobs`, {
     method: 'POST',

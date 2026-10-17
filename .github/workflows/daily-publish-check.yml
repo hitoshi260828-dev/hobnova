@@ -1,0 +1,60 @@
+name: Daily publish check
+
+# 毎日JST 12:00（= UTC 03:00）に、本日分の記事がmainへ公開済みか確認する。
+# 未公開かつCI green・Cloudflare green・マージ可能な記事PRがあれば、squash mergeして
+# 本番デプロイ・本番ページ表示まで確認する。記事の執筆・画像生成自体はこのworkflowでは
+# 行わない（既存の外部AIエージェント/HOBNOVA MCP経由の投稿が前提）。
+#
+# 冪等性: scripts/daily-publish-check.mjs が、本日付のpublishDateを持つ記事が既にmainに
+# あれば即座に終了するため、同日内に複数回実行されても二重公開しない。
+on:
+  schedule:
+    - cron: "0 3 * * *" # UTC 03:00 = JST 12:00
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "trueにするとマージ・通知送信を行わず、何が起きるかだけログ出力する"
+        required: false
+        default: false
+        type: boolean
+      skip_publish:
+        description: "trueにするとマージ候補の検出まで行い、実際のマージはしない（通知は送る）"
+        required: false
+        default: false
+        type: boolean
+      force_date:
+        description: "テスト用。YYYY-MM-DD形式で「今日」を上書きする（省略時はJSTの実日付）"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: daily-publish-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run daily publish check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          SKIP_PUBLISH: ${{ inputs.skip_publish }}
+          FORCE_DATE: ${{ inputs.force_date }}
+        run: node scripts/daily-publish-check.mjs

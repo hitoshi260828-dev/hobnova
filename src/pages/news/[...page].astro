@@ -1,0 +1,46 @@
+---
+// ニューストップページ（一覧）。Astro標準のpaginate()を使い、1ページに大量の記事が
+// 並ばないようにする（NEWS_PAGE_SIZE件ごとに分割）。
+//
+// rest parameter（[...page]）を使うと、ページ1は /news/ 、以降は /news/2/ /news/3/ ...
+// となる。Astroのルーティング優先順位は「静的 > 名前付き動的 > rest parameter」のため、
+// /news/[slug].astro や /news/topic/[topic].astro といった、より具体的なルートが
+// 常にこのcatch-allより優先して一致する（例: /news/topic/ai/ は [...page] 側ではなく
+// topic/[topic].astro 側にルーティングされる）。
+import { getCollection } from 'astro:content';
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumb from '../../components/layout/Breadcrumb.astro';
+import NewsList from '../../components/news/NewsList.astro';
+import { NEWS_PAGE_SIZE } from '../../consts';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const news = (await getCollection('news', ({ data }) => !data.draft)).sort(
+    (a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf(),
+  );
+  return paginate(news, { pageSize: NEWS_PAGE_SIZE });
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+---
+
+<BaseLayout
+  title="NEWS"
+  description="AI・生成AI・開発・テック・投資・お金・仕事・働き方・Webメディア・生活・制度変更を中心に、HOBNOVAが朝夕まとめるニュース。"
+>
+  <Breadcrumb items={[{ label: 'NEWS' }]} />
+
+  <div class="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+    <header>
+      <h1 class="flex items-baseline gap-3">
+        <span class="text-2xl font-bold tracking-tight text-navy sm:text-3xl">NEWS</span>
+        <span class="text-sm text-charcoal/70">ニュース</span>
+      </h1>
+      <p class="mt-2 max-w-2xl text-sm text-charcoal/80">
+        AI・生成AI・開発・テック・投資・お金・仕事・働き方・Webメディア・生活・制度変更を中心に、朝版・夜版でまとめます。
+      </p>
+    </header>
+
+    <NewsList page={page} />
+  </div>
+</BaseLayout>

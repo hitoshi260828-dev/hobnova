@@ -86,13 +86,62 @@ export interface NavLink {
 }
 
 export const HEADER_NAV: NavLink[] = [
+  { labelEn: 'NEWS', labelJa: 'ニュース', href: '/news/' },
   ...CATEGORIES.map((c) => ({ labelEn: c.navLabelEn, labelJa: c.labelJa, href: c.href })),
   { labelEn: 'ABOUT', href: '/about/' },
 ];
 
 export const FOOTER_NAV: NavLink[] = [
+  { labelEn: 'NEWS', labelJa: 'ニュース', href: '/news/' },
   ...CATEGORIES.map((c) => ({ labelEn: c.navLabelEn, labelJa: c.labelJa, href: c.href })),
   { labelEn: 'ABOUT', labelJa: 'サイトについて', href: '/about/' },
   { labelEn: 'CONTACT', labelJa: 'お問い合わせ', href: '/contact/' },
   { labelEn: 'PRIVACY', labelJa: 'プライバシーポリシー', href: '/privacy/' },
 ];
+
+// --- ニュース（朝刊/夕刊） ---
+// 将来的に毎日朝・夜2回、外部ニュースを元にした自動投稿を予定している領域。
+// 今回のPRでは掲載先（collection・ページ・ナビ）のみを用意し、自動生成自体は実装しない。
+
+export const NEWS_TOPIC_IDS = [
+  'ai',
+  'generative-ai',
+  'development',
+  'tech',
+  'investment',
+  'money',
+  'work',
+  'web-media',
+  'lifestyle',
+  'policy',
+] as const;
+export type NewsTopicId = (typeof NEWS_TOPIC_IDS)[number];
+
+export interface NewsTopicMeta {
+  id: NewsTopicId;
+  labelEn: string;
+  labelJa: string;
+  href: string;
+}
+
+export const NEWS_TOPICS: NewsTopicMeta[] = [
+  { id: 'ai', labelEn: 'AI', labelJa: 'AI', href: '/news/topic/ai/' },
+  { id: 'generative-ai', labelEn: 'Generative AI', labelJa: '生成AI', href: '/news/topic/generative-ai/' },
+  { id: 'development', labelEn: 'Development', labelJa: '開発', href: '/news/topic/development/' },
+  { id: 'tech', labelEn: 'Tech', labelJa: 'テック', href: '/news/topic/tech/' },
+  { id: 'investment', labelEn: 'Investment', labelJa: '投資', href: '/news/topic/investment/' },
+  { id: 'money', labelEn: 'Money', labelJa: 'お金', href: '/news/topic/money/' },
+  { id: 'work', labelEn: 'Work', labelJa: '仕事・働き方', href: '/news/topic/work/' },
+  { id: 'web-media', labelEn: 'Web Media', labelJa: 'Webメディア', href: '/news/topic/web-media/' },
+  { id: 'lifestyle', labelEn: 'Lifestyle', labelJa: '生活', href: '/news/topic/lifestyle/' },
+  { id: 'policy', labelEn: 'Policy', labelJa: '制度変更', href: '/news/topic/policy/' },
+];
+
+export const NEWS_EDITIONS = {
+  morning: { labelEn: 'MORNING', labelJa: '朝版' },
+  evening: { labelEn: 'EVENING', labelJa: '夜版' },
+} as const;
+export type NewsEdition = keyof typeof NEWS_EDITIONS;
+
+// 1ページに表示するニュース記事数（無限リスト化を避けるためpaginate()で分割する）。
+export const NEWS_PAGE_SIZE = 12;

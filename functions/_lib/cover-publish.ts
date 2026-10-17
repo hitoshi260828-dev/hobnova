@@ -23,7 +23,7 @@ import { readFrontmatterImage, writeFrontmatterImage } from './frontmatter-patch
 import { bytesToBase64, validateArticlePath, validateImageInput, type ImageInputArgs } from './image-validate';
 
 export const HOBNOVA_REPO: GitHubRepoRef = { owner: 'hitoshi260828-dev', repo: 'hobnova' };
-const BASE_BRANCH = 'main';
+export const BASE_BRANCH = 'main';
 
 export interface PublishCoverArgs {
   article_path?: unknown;
@@ -58,11 +58,11 @@ function errorResult(code: string, message: string): PublishCoverResult {
   return { status: 'error', code, message };
 }
 
-function humanizeSlug(slug: string): string {
+export function humanizeSlug(slug: string): string {
   return slug.replace(/-/g, ' ');
 }
 
-function decodeBase64Utf8(base64: string): string {
+export function decodeBase64Utf8(base64: string): string {
   const binary = atob(base64.replace(/\n/g, ''));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
