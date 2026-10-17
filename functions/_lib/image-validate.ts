@@ -18,7 +18,7 @@ export function extensionForMimeType(mimeType: AllowedImageMimeType): string {
 // 将来の高解像度化や社内外からの投入を見込み、安全側に余裕を持たせた上限。
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
-const CONTENT_DIRS = ['src/content/articles/', 'src/content/data-lab/', 'src/content/tools/'] as const;
+const CONTENT_DIRS = ['src/content/articles/', 'src/content/data-lab/', 'src/content/tools/', 'src/content/news/'] as const;
 
 export interface ArticlePathValidation {
   valid: boolean;
@@ -29,7 +29,7 @@ export interface ArticlePathValidation {
 }
 
 /**
- * article_path が許可された3コレクション配下の .md/.mdx であり、
+ * article_path が許可されたコレクション（articles/data-lab/tools/news）配下の .md/.mdx であり、
  * path traversal（`..`、絶対パス、null byte等）を含まないことを検証する。
  */
 export function validateArticlePath(articlePath: unknown): ArticlePathValidation {
@@ -51,7 +51,7 @@ export function validateArticlePath(articlePath: unknown): ArticlePathValidation
 
   const dir = CONTENT_DIRS.find((d) => articlePath.startsWith(d));
   if (!dir) {
-    return { valid: false, error: 'article_path must be under src/content/articles|data-lab|tools' };
+    return { valid: false, error: 'article_path must be under src/content/articles|data-lab|tools|news' };
   }
 
   const rest = articlePath.slice(dir.length);

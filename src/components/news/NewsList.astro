@@ -1,0 +1,47 @@
+---
+// /news/ と /news/page/[page]/ で共通利用する一覧＋ページネーションUI。
+// Astroの paginate() が返す Page<T> オブジェクトをそのまま受け取る。
+import type { CollectionEntry } from 'astro:content';
+import type { Page } from 'astro';
+import NewsCard from './NewsCard.astro';
+
+interface Props {
+  page: Page<CollectionEntry<'news'>>;
+}
+
+const { page } = Astro.props;
+---
+
+{
+  page.data.length > 0 ? (
+    <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {page.data.map((entry) => <NewsCard entry={entry} />)}
+    </div>
+  ) : (
+    <p class="mt-8 text-sm text-charcoal/60">まだニュースがありません。近日公開予定です。</p>
+  )
+}
+
+{
+  page.lastPage > 1 && (
+    <nav aria-label="ページ送り" class="mt-10 flex items-center justify-center gap-4 text-sm">
+      {page.url.prev ? (
+        <a href={page.url.prev} class="rounded-md border border-border px-4 py-2 text-charcoal hover:border-accent hover:text-accent">
+          前へ
+        </a>
+      ) : (
+        <span class="rounded-md border border-border px-4 py-2 text-charcoal/30">前へ</span>
+      )}
+      <span class="text-xs text-charcoal/60">
+        {page.currentPage} / {page.lastPage}
+      </span>
+      {page.url.next ? (
+        <a href={page.url.next} class="rounded-md border border-border px-4 py-2 text-charcoal hover:border-accent hover:text-accent">
+          次へ
+        </a>
+      ) : (
+        <span class="rounded-md border border-border px-4 py-2 text-charcoal/30">次へ</span>
+      )}
+    </nav>
+  )
+}

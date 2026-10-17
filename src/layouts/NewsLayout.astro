@@ -1,0 +1,102 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BaseLayout from './BaseLayout.astro';
+import Breadcrumb from '../components/layout/Breadcrumb.astro';
+import BreadcrumbJsonLd from '../components/seo/BreadcrumbJsonLd.astro';
+import ArticleJsonLd from '../components/seo/ArticleJsonLd.astro';
+import ImagePlaceholder from '../components/ui/ImagePlaceholder.astro';
+import Badge from '../components/ui/Badge.astro';
+import { NEWS_EDITIONS, NEWS_TOPICS } from '../consts';
+import { formatDateTime } from '../lib/format';
+
+interface Props {
+  entry: CollectionEntry<'news'>;
+}
+
+const { entry } = Astro.props;
+const { title, description, publishedAt, updatedAt, edition, topics, cover, summary, sources, sourceCount } = entry.data;
+const editionMeta = NEWS_EDITIONS[edition];
+const topicMetas = topics.map((id) => NEWS_TOPICS.find((t) => t.id === id)).filter((t) => t !== undefined);
+---
+
+<BaseLayout title={title} description={description} image={cover?.src} type="article">
+  <Fragment slot="head-extra">
+    <ArticleJsonLd
+      title={title}
+      description={description}
+      publishDate={publishedAt}
+      updatedDate={updatedAt}
+      image={cover?.src}
+      schemaType="NewsArticle"
+    />
+    <BreadcrumbJsonLd items={[{ label: 'NEWS', href: '/news/' }, { label: title }]} />
+  </Fragment>
+
+  <Breadcrumb items={[{ label: 'NEWS', href: '/news/' }, { label: title }]} />
+
+  <header class="bg-navy py-10 text-white sm:py-14">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6">
+      <div class="flex flex-wrap items-center gap-2">
+        <Badge class="border-white/20 bg-white/10 text-white">{editionMeta.labelEn} {editionMeta.labelJa}</Badge>
+        {topicMetas.map((t) => (
+          <Badge class="border-white/20 bg-white/10 text-white">{t!.labelJa}</Badge>
+        ))}
+      </div>
+      <h1 class="mt-3 text-2xl font-bold sm:text-3xl">{title}</h1>
+      <p class="mt-3 text-sm text-white/70">{description}</p>
+      <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/50">
+        <span>公開: {formatDateTime(publishedAt)}</span>
+        {updatedAt && updatedAt.getTime() !== publishedAt.getTime() && <span>更新: {formatDateTime(updatedAt)}</span>}
+      </div>
+    </div>
+  </header>
+
+  {
+    cover && (
+      <div class="mx-auto max-w-3xl px-4 pt-8 sm:px-6">
+        <ImagePlaceholder
+          image={cover}
+          alt={title}
+          aspect="aspect-[16/9]"
+          class="rounded-xl border border-border"
+          widths={[480, 768, 1200, 1536]}
+          sizes="(min-width: 768px) 768px, 100vw"
+        />
+      </div>
+    )
+  }
+
+  <div class="mx-auto max-w-3xl space-y-10 px-4 py-10 sm:px-6">
+    {summary && <p class="rounded-xl border border-border bg-white p-4 text-sm text-charcoal/80">{summary}</p>}
+
+    <section
+      class="prose prose-neutral max-w-none prose-headings:scroll-mt-20 prose-headings:font-bold prose-headings:text-navy prose-a:text-accent"
+    >
+      <slot />
+    </section>
+
+    {
+      sources.length > 0 && (
+        <section aria-label="出典" class="border-t border-border pt-6">
+          <p class="text-xs font-semibold tracking-wide text-charcoal/60">
+            出典
+            {typeof sourceCount === 'number' && sourceCount > sources.length && (
+              <span class="font-normal text-charcoal/40">（参照した情報源: 計{sourceCount}件）</span>
+            )}
+          </p>
+          <ul class="mt-3 space-y-2">
+            {sources.map((s) => (
+              <li class="text-xs text-charcoal/70">
+                <a href={s.url} class="text-accent hover:underline" rel="noopener noreferrer" target="_blank">
+                  {s.name}
+                </a>
+                {s.publishedDate && <span class="ml-2 text-charcoal/50">掲載: {formatDateTime(s.publishedDate)}</span>}
+                {s.accessedDate && <span class="ml-2 text-charcoal/50">確認: {formatDateTime(s.accessedDate)}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </div>
+</BaseLayout>
