@@ -3,6 +3,7 @@ import { CONTACT_STATUSES, toPublicContact, type ContactStatus } from '../_lib/t
 import { listContacts, getContactById, updateContactStatus } from '../_lib/db';
 import { issuerFromRequest, mcpResource, protectedResourceMetadataUrl, validateAccessToken } from '../_lib/oauth';
 import { publishCover, type PublishCoverArgs } from '../_lib/cover-publish';
+import { publishInlineImage, type PublishInlineArgs } from '../_lib/inline-publish';
 import { ALLOWED_IMAGE_MIME_TYPES } from '../_lib/image-validate';
 
 // MCP Streamable HTTP transport（単一エンドポイント、ステートレス実装）。
@@ -75,9 +76,10 @@ const TOOLS = [
   {
     name: 'publish_generated_image',
     description:
-      'ChatGPTで生成・選択した画像を、HOBNOVAの記事/DATA LAB/TOOLSのcover（アイキャッチ）として取り込み、' +
-      'main直接commitではなくPull Requestとして提案する。既存coverがある記事はreplace=trueを明示しない限り拒否する。' +
-      'dry_run=trueで実際の書き込み・PR作成なしに計画だけを確認できる。',
+      'ChatGPTで生成・選択した画像を、HOBNOVAの記事/DATA LAB/TOOLSへcoverまたは本文画像として取り込み、' +
+      'main直接commitではなくPull Requestとして提案する。type: coverは既存coverがある記事はreplace=trueを' +
+      '明示しない限り拒否する。type: inlineはafter_headingまたはpositionでH2見出しの直後へ挿入する' +
+      '（本文画像は1記事あたり最大4枚）。dry_run=trueで実際の書き込み・PR作成なしに計画だけを確認できる。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -100,9 +102,11 @@ const TOOLS = [
           },
           required: ['data'],
         },
-        type: { type: 'string', enum: ['cover'], description: '現在はcoverのみ対応（将来inline対応予定）。' },
-        alt: { type: 'string', description: '代替テキスト（省略可）。' },
-        replace: { type: 'boolean', description: '既存coverを置き換える場合のみtrueを指定する。既定はfalse。' },
+        type: { type: 'string', enum: ['cover', 'inline'], description: '省略時はcover。本文画像の場合はinlineを指定。' },
+        alt: { type: 'string', description: '代替テキスト（省略可。inlineは省略時に見出しから自動生成）。' },
+        replace: { type: 'boolean', description: '（coverのみ）既存coverを置き換える場合のみtrueを指定する。既定はfalse。' },
+        after_heading: { type: 'string', description: '（inlineのみ）この見出し（完全一致）の直後へ挿入する。' },
+        position: { type: 'integer', minimum: 1, description: '（inlineのみ）after_headingの代わりにH2見出しの番号（1始まり）で指定する。' },
         dry_run: { type: 'boolean', description: 'trueの場合、GitHubへの書き込み・PR作成を行わず計画のみ返す。' },
       },
       required: ['article_path', 'image'],
@@ -150,7 +154,10 @@ async function callTool(env: Env, name: string, args: Record<string, unknown>) {
       return toolTextResult({ contact: toPublicContact(updated!) });
     }
     case 'publish_generated_image': {
-      const result = await publishCover(env, args as PublishCoverArgs);
+      const result =
+        args.type === 'inline'
+          ? await publishInlineImage(env, args as PublishInlineArgs)
+          : await publishCover(env, args as PublishCoverArgs);
       return toolTextResult(result, result.status === 'error');
     }
     default:
