@@ -9,15 +9,24 @@ name: NEWS publish (morning)
 # 方針（2026-10-18改訂）: news-publish.mjsはPR作成までしか行わない。mainへのmergeは必ず
 # 人間が行う（docs/ai-article-guidelines.md 9章）。このworkflow自体も同様にmergeを行わない。
 #
-# 提案する投稿時刻: JST 07:30 = UTC 22:30（前日） -- 1日を始める前に読める時間。
-# 通常記事 JST 12:00 とは重ならない。
+# 投稿時刻: JST 08:00 = UTC 23:00（前日）。通常記事 daily-publish-check.yml（JST 12:00 =
+# UTC 03:00）とは4時間離れており重ならない。NEWS夜版（news-evening.yml、JST 20:00 =
+# UTC 11:00）とも時間帯が重ならない。
 #
-# 重要: 現時点では workflow_dispatch のみで、schedule トリガーは意図的に未登録。
-# このworkflow（= news-publish.mjs）は実際の本番PR作成をworkflow_dispatchで最低1回
-# 確認してから、下記のschedule行をコメント解除して有効化することを想定している。
+# 実機確認済み（2026-10-17、workflow_dispatch・dry_run=false・force_date指定）:
+# fresh runner上でのnpm ci成功、research/cover生成成功、ローカルcheck成功、
+# GITHUB_TOKEN起点でのPR作成成功（リポジトリのActions設定
+# "Allow GitHub Actions to create and approve pull requests" を有効化した上で）、
+# LINE通知API呼び出し成功、二重起動防止（idempotency check・concurrency）が機能することを
+# 確認済み。このPRでschedule行を有効化する。
+#
+# 二重起動防止: concurrency group（下記）により同一workflowの重複実行は直列化される。
+# news-publish.mjs側でも、当日分のファイルがmainに既にあれば即終了する冪等性チェックと、
+# 同branchに既にopen PRがあれば再生成せず案内のみ再送する重複防止チェックの両方がある
+# （再実行時も安全。研究・画像生成コストを再度払わない）。
 on:
-  # schedule:
-  #   - cron: '30 22 * * *' # UTC 22:30 = JST 07:30（朝版）
+  schedule:
+    - cron: '0 23 * * *' # UTC 23:00（前日） = JST 08:00（朝版）
   workflow_dispatch:
     inputs:
       dry_run:
