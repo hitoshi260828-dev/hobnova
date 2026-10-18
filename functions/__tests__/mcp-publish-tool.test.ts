@@ -53,7 +53,7 @@ describe('POST /api/mcp — publish_generated_image wiring', () => {
     } as never);
     const body = (await res.json()) as any;
     const tool = body.result.tools.find((t: { name: string }) => t.name === 'publish_generated_image');
-    expect(tool._meta).toEqual({ 'openai/fileParams': ['image'] });
+    expect(tool._meta['openai/fileParams']).toEqual(['image']);
     expect(tool.inputSchema.properties.image.properties.download_url).toBeDefined();
     expect(tool.inputSchema.properties.image.properties.file_id).toBeDefined();
   });

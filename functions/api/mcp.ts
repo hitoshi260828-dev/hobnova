@@ -39,7 +39,13 @@ function rpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: '2.0', id: id ?? null, error: { code, message } };
 }
 
-const TOOLS = [
+// スキーマ構造（type/image入力の形・_metaの有無等）を変更するたびに上げる。ChatGPT connector
+// 側のtools/listキャッシュに起因するschema drift（connector側だけ古いschemaを見せ続ける
+// 既知の問題）を、/api/mcp-schema-check の無認証diagnosticエンドポイント経由で
+// 外側から比較・検知できるようにするための番号。Secretではない（公開tool定義のメタ情報）。
+export const MCP_SCHEMA_VERSION = 2;
+
+export const TOOLS = [
   {
     name: 'list_contacts',
     description: 'HOBNOVAへの問い合わせ一覧を取得する。新着確認に使う。',
@@ -84,7 +90,7 @@ const TOOLS = [
     // OpenAI MCP connectorへ「imageはファイル参照として渡せる」ことを伝える宣言。
     // これが無いと、ChatGPT側は添付/生成画像をモデル自身がBase64文字列へ手動シリアライズ
     // しようとし、不安定（image.data is required等のエラーを誘発）になる。
-    _meta: { 'openai/fileParams': ['image'] },
+    _meta: { 'openai/fileParams': ['image'], 'hobnova/schemaVersion': MCP_SCHEMA_VERSION },
     inputSchema: {
       type: 'object',
       properties: {
