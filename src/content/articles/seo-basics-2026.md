@@ -14,7 +14,7 @@ image: "./seo-basics-2026-hero.png"
 
 ## HOBNOVAで設定しているSEO項目
 
-SEO関連のコンポーネントは`src/components/seo/`に、サイト全体の設定は`astro.config.mjs`に、robots.txtは`src/pages/`にまとめています。表のファイル名はそれぞれのフォルダ内のものです。
+SEO関連のコンポーネントは`src/components/seo/`に、サイト全体の設定は`astro.config.mjs`に、robots.txtは静的ファイルとして`public/`に置いています。表のファイル名はそれぞれのフォルダ内のものです。
 
 | 項目 | ファイル | 内容 |
 |---|---|---|
@@ -25,7 +25,7 @@ SEO関連のコンポーネントは`src/components/seo/`に、サイト全体�
 | noindex | SEOHead.astro | propのみ用意 |
 | 末尾スラッシュ | astro.config.mjs | `always` |
 | sitemap | astro.config.mjs | 自動生成 |
-| robots.txt | robots.txt.ts | 全許可＋sitemap |
+| robots.txt | robots.txt | 全許可＋sitemap |
 | WebSite等 | JsonLd.astro | 全ページ共通 |
 | Article | ArticleJsonLd.astro | 記事系ページ |
 | パンくず | BreadcrumbJsonLd.astro | 記事系ページ |
@@ -86,12 +86,13 @@ sitemapは、`astro.config.mjs`の`integrations: [sitemap(), mdx()]`に`@astrojs
 
 この規模のサイトなら、sitemapは必須ではありません。[サイトマップの概要](https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview?hl=ja)（2026年10月18日確認）では、おおむね500ページ以下で、内部リンクから重要なページにすべてたどり着けるサイトなら不要な場合があるとされ、送信してもすべてのURLのクロールやインデックス登録が保証されるわけではないとも書かれています。とはいえ、Astroなら設定1行で、記事を追加するたびに自動で更新されます。置いておく負担はほぼありません。
 
-robots.txtはエンドポイントとして生成しています。
+robots.txtは、`public/robots.txt`という静的ファイルをそのまま配信しています。
 
-```ts
-export const GET: APIRoute = ({ site }) => {
-  const siteUrl = site?.toString().replace(/\/$/, '') ?? SITE_URL;
-  const body = `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap-index.xml\n`;
+```text
+User-agent: *
+Allow: /
+
+Sitemap: https://hobnova.jp/sitemap-index.xml
 ```
 
 中身は「すべて許可」とsitemapの場所だけです。誤解しやすいのは、robots.txtを「検索結果に出したくないページを隠す仕組み」だと考えてしまうこと。[robots.txtの概要](https://developers.google.com/search/docs/crawling-indexing/robots/intro?hl=ja)（同日確認）は、robots.txtはクローラーのトラフィック管理のためのもので、Googleにページを表示させないためのメカニズムではないと明言し、除外したい場合は`noindex`などを使うよう案内しています。HOBNOVAの`SEOHead.astro`には`noindex`のpropを用意してありますが、2026年10月18日時点で使っているページはありません。使いどころは、送信完了画面のように検索から直接来ても意味がないページです。
@@ -133,9 +134,9 @@ Googleは[構造化データの概要](https://developers.google.com/search/docs
 
 1つは画像の参照先。OGPの`og:image`には記事ごとのアイキャッチを渡しているのに、JSON-LDの`image`には画像を渡し忘れていて、既定画像のパスが入っている。その既定画像のファイル自体がまだ置かれていない、というところまで重なると、構造化データだけが存在しない画像を指すことになります。[Articleの構造化データのドキュメント](https://developers.google.com/search/docs/appearance/structured-data/article?hl=ja)（2026年10月18日確認）は、Articleに必須プロパティはないとしつつ、imageの画像URLはクロールとインデックス登録に対応している必要があるとしています。
 
-もう1つは設定の二重化です。Astroなら、`public/robots.txt`という静的ファイルと、`src/pages/robots.txt.ts`のような動的生成の両方を置けてしまいます。中身が同じうちは問題が表に出ませんが、片方だけ書き換えると、どちらが配信されているのか分からなくなる。設定の置き場所は1か所に絞るべきです。
+もう1つは設定の二重化です。Astroでは、`public/robots.txt`という静的ファイルと、`src/pages/robots.txt.ts`のような動的生成の両方を置けてしまいます。同じ出力先のファイルが`public/`にあると、ビルドはエンドポイント側を生成せずに飛ばし、ログに警告を1行出すだけで完了します。中身が同じうちは問題が表に出ませんが、エンドポイントだけを書き換えても、配信される内容は変わりません。設定の置き場所は1か所に絞り、ビルドログの警告にも目を通しておくべきです。
 
-こうしたずれは、`npm run build`の後に`dist`内のHTMLを1ページ開けば見つかります。確認するのは次の箇所です。
+こうしたずれは、`npm run build`の後に`dist`内のHTMLとビルドログを見れば見つかります。確認するのは次の箇所です。
 
 | 見る場所 | 確認すること |
 |---|---|
@@ -144,7 +145,7 @@ Googleは[構造化データの概要](https://developers.google.com/search/docs
 | canonical | `https://`から始まる正規URLか |
 | og:image | 開ける画像URLか |
 | JSON-LDのimage | og:imageと同じく開けるか |
-| `dist/robots.txt` | 出力元が1つか |
+| ビルドログ | 同名ファイルをスキップした警告が出ていないか |
 
 ## AI機能が加わった検索でも、やることは変わらない
 
