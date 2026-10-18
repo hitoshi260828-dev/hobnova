@@ -1,11 +1,11 @@
 // ニュース収集+要約生成。OpenAI Responses API（web_searchツール）を1回呼び出し、
 // 「情報収集」と「記事執筆」を1コールにまとめる（コスト・一貫性の両面で分割より有利）。
 //
-// 重要な注意: このファイルの実API呼び出しは、このセッション内では一度も実行（＝課金）して
-// いない。構造体・プロンプトは公開ドキュメントのパターンに沿って実装したが、Responses API
-// の正確な挙動（web_searchとjson出力の組み合わせの安定性等）は未検証。実運用前に
-// DRY_RUN無しで最低1回、人間の確認付きで試すことを強く推奨する。
+// 実機確認済み（2026-10-17、news-morning.yml/news-evening.ymlのworkflow_dispatch、
+// dry_run=false、PR #62/#63）: research 1回あたり実際にOpenAI APIを呼び出し課金が発生し、
+// web_searchとJSON出力の組み合わせは安定して動作することを確認済み。
 import OpenAI from "openai";
+import dns from "node:dns/promises";
 import { NEWS_TOPIC_IDS, NEWS_TOPIC_LABELS } from "./topics.mjs";
 
 export const DEFAULT_NEWS_TEXT_MODEL = "gpt-4.1";
@@ -138,6 +138,38 @@ function validateResearchResult(parsed) {
   return parsed;
 }
 
+// IPv4の予約・プライベートアドレス範囲（RFC1918のプライベート網、loopback、link-local/
+// クラウドmetadataエンドポイント(169.254.0.0/16。AWS/GCP/Azureの169.254.169.254を含む)、
+// 0.0.0.0/8）。DNS rebinding対策として、ホスト名の文字列一致ではなく実際に解決したIPで
+// 判定する。
+function isPrivateOrReservedIpv4(octets) {
+  const [a, b] = octets;
+  if (a === 10) return true;
+  if (a === 127) return true;
+  if (a === 0) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 169 && b === 254) return true; // link-local / cloud metadata
+  return false;
+}
+
+function isPrivateOrReservedIp(address, family) {
+  if (family === 4) {
+    const octets = address.split(".").map(Number);
+    if (octets.length !== 4 || octets.some((n) => Number.isNaN(n))) return true; // 不正な形式は安全側に拒否
+    return isPrivateOrReservedIpv4(octets);
+  }
+  // IPv6: loopback(::1)、unique local(fc00::/7)、link-local(fe80::/10)、
+  // IPv4-mapped(::ffff:a.b.c.d)はIPv4側の範囲で再判定する。
+  const normalized = address.toLowerCase();
+  if (normalized === "::1") return true;
+  if (/^f[c-d][0-9a-f]{2}:/.test(normalized)) return true; // fc00::/7
+  if (/^fe[8-9a-b][0-9a-f]:/.test(normalized)) return true; // fe80::/10
+  const v4Mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(normalized);
+  if (v4Mapped) return isPrivateOrReservedIpv4(v4Mapped[1].split(".").map(Number));
+  return false;
+}
+
 // sourceUrlが実在するホストへ実際に解決するかをHTTPで確認する。
 // 実例（2026-10-17、PR #62の品質レビューで発見）: web_searchの結果からURLを組み立てる際、
 // 本物の総務省発表（www.soumu.go.jp）のパスがIPリテラルのハルシネートされたホスト名
@@ -146,22 +178,47 @@ function validateResearchResult(parsed) {
 // `new URL()`での構文チェックだけではこの種の不一致を検出できない。デフォルトのTLS証明書
 // 検証を無効化しないfetch()は、ホスト名不一致の証明書を提示するサーバーへの接続を
 // 自動的に拒否する（Node.jsの標準動作）ため、これを実URL到達性チェックとして利用する。
-async function verifySourceUrlResolves(url, { fetchImpl = fetch, timeoutMs = 8000 } = {}) {
+//
+// SSRF対策（独立レビューで指摘、2026-10-17）: このチェックはGitHub Actionsランナー上で
+// 実行される（Cloudflare Workersのようなプラットフォーム側fetch制限が無い）。
+// item.sourceUrlはOpenAIモデルが生成した信頼できない入力のため、fetchする前に
+// (1) httpsのみ許可、(2) 実際に解決したIPアドレスがプライベート/予約範囲でないことを
+// DNS解決して確認する。
+// 戻り値はfinalUrl（実際に解決した場合、redirectを辿った最終URL）またはnull（解決不可）。
+// 元のURLで到達性を確認しても、実際に読者がクリックした先（redirect後）が別ホストだと
+// 「検証したもの」と「表示されるもの」が食い違う（独立レビューで指摘）。そのためこの
+// 最終URLをresearchNews側でsourceUrlの採用値として使う。
+async function verifySourceUrlResolves(url, { fetchImpl = fetch, lookupImpl = dns.lookup, timeoutMs = 8000 } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") return null;
+
+  try {
+    const addresses = await lookupImpl(parsed.hostname, { all: true, verbatim: true });
+    if (addresses.length === 0) return null;
+    if (addresses.some((a) => isPrivateOrReservedIp(a.address, a.family))) return null;
+  } catch {
+    // DNS解決に失敗したホストは「解決できないURL」として扱う。
+    return null;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetchImpl(url, { method: "HEAD", redirect: "follow", signal: controller.signal });
-    if (res.ok || (res.status >= 300 && res.status < 400)) return true;
-    if (res.status === 405) {
-      // HEADを許可しないサーバーもある。GETで再確認する。
-      const getRes = await fetchImpl(url, { method: "GET", redirect: "follow", signal: controller.signal });
-      return getRes.ok;
-    }
-    return false;
+    if (res.ok || (res.status >= 300 && res.status < 400)) return res.url || url;
+    // HEADを拒否するサーバーは405が仕様上正しいが、実際には403/404/406/501等で拒否してくる
+    // 実装もあるため、明確な成功応答で無い場合はGETで再確認する（false negativeを減らす）。
+    const getRes = await fetchImpl(url, { method: "GET", redirect: "follow", signal: controller.signal });
+    return getRes.ok ? getRes.url || url : null;
   } catch {
     // ネットワークエラー・TLS証明書のホスト名不一致・タイムアウト等はすべて「解決できない
     // URL」として扱う。
-    return false;
+    return null;
   } finally {
     clearTimeout(timeout);
   }
@@ -171,7 +228,7 @@ async function verifySourceUrlResolves(url, { fetchImpl = fetch, timeoutMs = 800
  * ニュースを収集し記事内容を生成する。実際にOpenAI APIを呼び出す（課金が発生する）。
  * @param {{ edition: "morning"|"evening", date: string, excludeUrls: string[] }} options
  * @param {{ apiKey: string, model: string }} config
- * @param {{ fetchImpl?: typeof fetch }} [httpOptions] テスト用のfetch差し替え。
+ * @param {{ fetchImpl?: typeof fetch, lookupImpl?: typeof dns.lookup }} [httpOptions] テスト用のfetch/DNS差し替え。
  */
 export async function researchNews(options, config, httpOptions = {}) {
   const client = new OpenAI({ apiKey: config.apiKey });
@@ -190,10 +247,12 @@ export async function researchNews(options, config, httpOptions = {}) {
   const validated = validateResearchResult(parsed);
 
   const checks = await Promise.all(
-    validated.items.map(async (item) => ({ item, resolves: await verifySourceUrlResolves(item.sourceUrl, httpOptions) }))
+    validated.items.map(async (item) => ({ item, finalUrl: await verifySourceUrlResolves(item.sourceUrl, httpOptions) }))
   );
-  const rejectedSources = checks.filter((c) => !c.resolves).map((c) => c.item);
-  validated.items = checks.filter((c) => c.resolves).map((c) => c.item);
+  const rejectedSources = checks.filter((c) => c.finalUrl === null).map((c) => c.item);
+  // 検証に使った最終URL（redirect後）を採用する。元のsourceUrlで到達性を確認しても、
+  // 実際に表示・クリックされる先がredirectで別URLになっていると食い違うため。
+  validated.items = checks.filter((c) => c.finalUrl !== null).map((c) => ({ ...c.item, sourceUrl: c.finalUrl }));
   if (validated.items.length === 0) {
     throw new Error("research result: no item had a sourceUrl that actually resolves (all rejected by verifySourceUrlResolves)");
   }
