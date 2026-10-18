@@ -29,3 +29,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# 非公開ナレッジの同期キャッシュ（通常は %LOCALAPPDATA%\hobnova-knowledge。リポジトリ内に置かない）
+.knowledge-cache/
