@@ -15,10 +15,12 @@ powershell -ExecutionPolicy Bypass -File scripts/knowledge-sync.ps1
 
 - 必要なもの: Python 3.10以上、GitHub CLI（`gh auth login` 済み、非公開リポジトリへのアクセス権）
 - キャッシュ: `%LOCALAPPDATA%\hobnova-knowledge`（Git管理外・OneDrive同期外）。環境変数
-  `HOBNOVA_KNOWLEDGE_CACHE` で変更できますが、Git作業ツリーの中は指定できません（同期スクリプトが中止します）
-- 同期後に読むファイル: `%LOCALAPPDATA%\hobnova-knowledge\context.md`
+  `HOBNOVA_KNOWLEDGE_CACHE` で変更できますが、Git作業ツリーの中とOneDriveの同期フォルダの中は指定できません（同期スクリプトが中止します）
+- 同期後に読むファイル: 記事作業では `%LOCALAPPDATA%\hobnova-knowledge\context-public.md`（公開承認済みのみ）、
+  内部の判断材料には `context.md`（全区分。各エントリに公開区分を明記）
 - 取得元コミット・同期日時・変更ファイルは `state.json`、履歴は `sync-log.jsonl`
-- 既定で、公開未承認の語句がこのリポジトリの記事に出ていないかを確認します（`-NoLeakCheck` で省略）
+- 既定で、公開未承認の情報（`sensitive_terms` と本文の文）がこのリポジトリのテキストファイルに出ていないかを
+  確認します（`-NoLeakCheck` で省略）。全角・カンマ・空白の表記ゆれは正規化して照合します
 
 ### 結果
 
@@ -26,17 +28,23 @@ powershell -ExecutionPolicy Bypass -File scripts/knowledge-sync.ps1
 |---:|---|---|
 | 0 | 同期成功、または更新なし | 更新または維持 |
 | 2 | 取得失敗（ネットワーク・認証） | 維持 |
-| 3 | 確認が必要（手元のキャッシュが変更されている／リモート履歴の書き換え／スクリプト類の変更） | 維持 |
+| 3 | 確認が必要（手元のキャッシュの変更／同期記録の欠落／リモート履歴の書き換え／ツールのハッシュ不一致／キャッシュ先がGit作業ツリーかOneDriveの中） | 維持 |
 | 4 | 取得した内容が検証を通らない | 維持 |
 | 5 | 公開未承認の語句がこのリポジトリの記事にある | 更新済み（記事側を確認） |
 
-スクリプト・スキーマ・ワークフローが非公開リポジトリ側で変更されたときは、GitHubで差分を確認してから
-`-AllowScriptUpdate` を付けて再実行します。
+履歴の書き換えで止まったときは、ユーザーがGitHubで内容を確認し、表示された取得先コミットを指定して
+`-AcceptRewrite <SHA先頭12桁以上>` で再実行します。
 
 ## 仕組み
 
-- 同期の本体は非公開リポジトリの `scripts/sync-knowledge.py` です。2回目以降は、前回検証を通った
-  キャッシュ内のスクリプトを実行します。
+- 同期の本体は非公開リポジトリの `scripts/sync-knowledge.py` です。`knowledge-sync.ps1` の `$ToolPin` に、
+  使うコミットとファイルごとのSHA-256を固定値で書いています。ps1はそのコミットからツールを取り出し、
+  ハッシュが一致したときだけ `python -I -B` で実行します。**同期したデータの中のスクリプトは実行しません。**
+- 非公開リポジトリ側でツールを変えても、このリポジトリで `$ToolPin` を更新するPRがmergeされるまで
+  同期処理は変わりません。新しい値は `-ShowPin <コミットSHA>` で確認できます。
+- 検証には、ツールと一緒にピン留めしたスキーマを使います。
+- 取り込むファイルは `git ls-tree` の一覧どおりに取り出してハッシュを照合し、許可リストにないパス・
+  拡張子、大文字小文字の違いだけの衝突、シンボリックリンクなどを拒否します。
 - GitHubからはbareクローンへのfetchのみで、pushはしません。認証はGitHub CLIに任せ、トークンを
   表示・保存しません。
 - 取得した内容は、形式・重複・公開区分・機密情報の検証を通ったときだけキャッシュに反映します。
