@@ -198,9 +198,17 @@ async function main() {
     { maxRetries: 2, onAttemptError: (err, attempt) => console.warn(`[news-publish] research失敗(試行${attempt + 1}): ${err.message}`) }
   );
 
+  if (research.rejectedSources?.length > 0) {
+    // 実際に解決しない（ハルシネートされた）sourceUrlはresearchNews内で既に除外済み。
+    // ここではログに残すだけ（PR #62で実際に発生した事故の再検知例）。
+    for (const rejected of research.rejectedSources) {
+      console.warn(`[news-publish] sourceUrlが解決できないため除外しました: "${rejected.heading}" -> ${rejected.sourceUrl}`);
+    }
+  }
+
   research.items = filterDuplicates(research.items, recentUrls);
   if (research.items.length === 0) {
-    throw new Error("収集したニュースが全て直近で既出のため、公開対象がありません。");
+    throw new Error("収集したニュースが全て直近で既出または無効なsourceUrlのため、公開対象がありません。");
   }
   console.log(`[news-publish] ニュース項目: ${research.items.length}件`);
 
