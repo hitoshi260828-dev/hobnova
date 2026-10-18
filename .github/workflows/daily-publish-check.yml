@@ -1,15 +1,22 @@
 name: Daily publish check
 
-# 毎日JST 12:00（= UTC 03:00）に、本日分の記事がmainへ公開済みか確認する。
+# 毎日JST 12:07ごろ（= UTC 03:07）に、本日分の記事がmainへ公開済みか確認する。
 # 未公開かつCI green・Cloudflare green・マージ可能な記事PRがあれば、squash mergeして
 # 本番デプロイ・本番ページ表示まで確認する。記事の執筆・画像生成自体はこのworkflowでは
 # 行わない（既存の外部AIエージェント/HOBNOVA MCP経由の投稿が前提）。
 #
 # 冪等性: scripts/daily-publish-check.mjs が、本日付のpublishDateを持つ記事が既にmainに
 # あれば即座に終了するため、同日内に複数回実行されても二重公開しない。
+#
+# cron時刻について（2026-10-18改訂）: 当初は`0 3 * * *`（正時）だったが、PR #59merge後の
+# 最初の本番発火予定時刻（2026-10-18 03:00 UTC）を過ぎても実行記録が一件も残らなかった
+# （失敗ログも無し、未発火）。GitHub Actions公式ドキュメントは「正時（分=0）に設定された
+# scheduleは高負荷により遅延・スキップされやすい」と明記しているため、正時を避けて
+# 03:07へずらした。効果（実発火するかどうか）は次回発火時に改めて確認が必要
+# （未確認のまま断定しない）。
 on:
   schedule:
-    - cron: "0 3 * * *" # UTC 03:00 = JST 12:00
+    - cron: "7 3 * * *" # UTC 03:07 = JST 12:07（正時はGitHub側で遅延・スキップされやすいため7分ずらす）
   workflow_dispatch:
     inputs:
       dry_run:
