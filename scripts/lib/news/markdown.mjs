@@ -56,7 +56,7 @@ export function buildNewsMarkdown(input) {
     ...topics.map((t) => `  - ${t}`),
     input.summary ? `summary: ${yamlString(input.summary)}` : null,
     `sourceCount: ${input.items.length}`,
-    `draft: ${hasCover ? "false" : "true"}`,
+    `draft: false`,
     "sources:",
     sourcesYaml,
     "---",

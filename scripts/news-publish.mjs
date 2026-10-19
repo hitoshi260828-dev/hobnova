@@ -169,7 +169,7 @@ async function main() {
     console.log(`  planned file: ${filePath}`);
     console.log(`  planned branch: ${branch}`);
     console.log(`  text model: ${resolveNewsTextModel()}`);
-    console.log(`  cover: このスクリプトでは生成しない（ChatGPT + publish_generated_imageで後付け、追加までdraft: true）`);
+    console.log(`  cover: 不要（NEWSはテキストのみで公開）`);
     if (existingPr) {
       console.log(`  既存PRを検出: #${existingPr.number} (${existingPr.url})。実行時はresearch/coverを再生成せずこのPRの案内のみ再送します。`);
     }
@@ -256,11 +256,11 @@ async function main() {
   await git([
     "-c", "user.name=hobnova-news-bot",
     "-c", "user.email=actions@users.noreply.github.com",
-    "commit", "-m", `Add ${editionJa} news for ${date} (cover待ち)`,
+    "commit", "-m", `Add ${editionJa} news for ${date} (auto publish)`,
   ]);
   await git(["push", "-u", "origin", branch]);
 
-  // --- 6. PR作成（mainへのmergeはここでは行わない。最終判断は人間。cover待ちのためdraft: true） ---
+  // --- 6. PR作成・自動マージ予約（NEWSのみ承認不要） ---
   const prBody = [
     "## 概要",
     "",
@@ -269,14 +269,8 @@ async function main() {
     `- 対象日: ${date}`,
     `- ニュース項目数: ${research.items.length}`,
     `- ローカルcheck（astro check / build）: PASS`,
-    `- cover: 未設定（\`draft: true\`、cover待ち）`,
-    "",
-    "⚠️ この記事はcoverが無いため本番には表示されません（`draft: true`）。" +
-      "このPRをmergeした後、ChatGPTで生成した画像をHOBNOVA MCPの`publish_generated_image`" +
-      `（type: cover, article_path: \`${filePath}\`）で追加してください。追加されると同じcommitで\`draft: false\`に` +
-      "切り替わり、本番に表示されます。画像なしでのdraft手動変更は行わないでください。",
-    "",
-    "自動生成コンテンツのため、内容の事実確認の上で人間がmergeしてください。このPRは自動でmergeされません。",
+    "- NEWSは画像不要、draft: false",
+    "- CIが成功した場合のみ自動マージ。失敗時はPRを残します。",
     "",
     REVIEW_NOTE,
     "",
@@ -295,11 +289,13 @@ async function main() {
   console.log(`[news-publish] PR作成: ${prUrl}`);
   if (!prNumber) throw new Error(`PR番号をURLから取得できませんでした: ${prUrl}`);
 
-  await notify(
-    false,
-    `🤖 HOBNOVA NEWS ${editionJa}\n\n${date}分のPRを作成しました（ローカルcheck PASS、cover待ち）。\n内容を確認し、問題なければGitHubでmergeしてください。mergeした後、ChatGPTでcoverを追加するまで本番には表示されません。\n${prUrl}`
-  );
-  console.log("[news-publish] PR作成完了。mergeは人間が行うため、ここで終了します。");
+  // GITHUB_TOKENで作成したPRではpull_request CIが発火しないため、
+  // workflow_dispatchで同じrequired checkを明示的に起動する。
+  // ブランチ保護を迂回せず、チェックが成功した時だけGitHubのauto-mergeが実行される。
+  await ghRaw(["workflow", "run", "pr-check.yml", "--ref", branch]);
+  await ghRaw(["pr", "merge", String(prNumber), "--auto", "--squash"]);
+  await notify(false, `🤖 HOBNOVA NEWS ${editionJa}\\n\\n${date}分のPRを作成し、CI成功後の自動マージを予約しました。\\n${prUrl}`);
+  console.log("[news-publish] CI成功後の自動マージを予約しました。");
 }
 
 // news-publish.mjs/daily-publish-check.mjs/notify-article-ready.mjsで実際に発生した「importする
