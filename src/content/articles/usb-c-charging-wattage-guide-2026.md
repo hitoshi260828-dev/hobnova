@@ -33,11 +33,11 @@ PC、充電器、ケーブル。
 
 同じ「Surface Laptop」という名前でも必要電力はかなり違います。
 
-なので、手元のPCの仕様ページや付属ACアダプターを確認して、45W、60W、65W、100W、140Wなどの数字をまず把握。
+なので、手元のPCのメーカー仕様ページで**USB-C端子が受け付けるUSB PD入力の上限・対応プロファイル**を確認して、45W、60W、65W、100W、140Wなどの数字をまず把握。付属ACアダプターが専用端子式の場合、そのW数はUSB-C給電の上限とは一致しない場合があります。たとえば専用200Wアダプターを使うPCでも、USB-Cの上限が100Wという機種があります。
 
 ここを飛ばして「とりあえず一番大きいもの」を買うと、持ち歩きには大きすぎる充電器になりがちです。
 
-参考: [Microsoft Surface Laptopの充電要件](https://support.microsoft.com/ja-jp/surface/battery/surface-charging-requirements-and-power-supplies-surface-laptop)
+仕様確認日：2026年10月20日。参考: [Microsoft Surface Laptopの充電要件](https://support.microsoft.com/ja-jp/surface/battery/surface-charging-requirements-and-power-supplies-surface-laptop)
 
 ## 45W：軽いモバイルPCなら十分
 
@@ -90,7 +90,7 @@ PCが受け取れる上限までです。
 
 140W級が必要になるのは、高性能ノートや一部の大型モデルなど。軽量ノートしか使わないなら、充電器が重くなるだけで終わる可能性もあります。
 
-参考: [USB-IF USB Power Delivery](https://www.usb.org/usb-charger-pd)
+仕様確認日：2026年10月20日。参考: [USB-IF USB Power Delivery](https://www.usb.org/usb-charger-pd)
 
 ## 実は「ケーブル」がかなり重要
 
@@ -154,7 +154,7 @@ USB-C充電器選びは、最大W数だけを比べると迷子になります�
 
 見る順番は、
 
-1. PCが必要とするW数
+1. PCのUSB-C端子が対応するPD給電のW数
 2. 充電器の各ポート出力
 3. 複数ポート使用時の配分
 4. ケーブルの対応W数
