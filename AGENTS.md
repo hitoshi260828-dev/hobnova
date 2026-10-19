@@ -29,3 +29,10 @@ request is only 「HOBNOVAの記事を1本作って。テーマも任せる」�
 required end-to-end workflow and completion gate for topic selection, research, writing, images,
 implementation, review, validation, and the human-approved publishing flow. Do not treat an
 article as complete unless every item in that guide's completion checklist passes.
+
+## Private knowledge
+
+ChatGPT hearings and operating decisions are kept in a separate private repository and synced only on
+the owner's local machine (see `docs/private-knowledge.md` and section 15 of `CLAUDE.md`). Never copy
+that content into this public repository, and never write first-hand experiences or figures that are not
+in the owner's approved (`public_approved`) knowledge.
