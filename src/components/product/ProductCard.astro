@@ -14,6 +14,10 @@ const amazonUrl = product.amazonAsin
   ? `https://www.amazon.co.jp/dp/${encodeURIComponent(product.amazonAsin)}?tag=${AMAZON_TRACKING_ID}`
   : undefined;
 
+// Amazon Creators API が利用可能になったら amazonImageUrl が優先される。
+// API未利用の間は、権利確認済みの imageUrl がある場合だけ画像を表示する。
+const productImageUrl = product.amazonImageUrl ?? product.imageUrl;
+
 // 楽天は公式リンク作成画面で計測IDを設定して発行したURLをそのまま保存・利用する。
 // ガイドライン上、生成済みアフィリエイトURLのパラメータをコード側で改変しない。
 const rakutenUrl = product.rakutenAffiliateUrl;
@@ -21,7 +25,7 @@ const rakutenUrl = product.rakutenAffiliateUrl;
 <div class="not-prose my-8 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
   <div class="grid gap-5 p-5 sm:grid-cols-[9rem_1fr]">
     <div class="flex min-h-32 items-center justify-center rounded-xl bg-neutral-50 p-3">
-      {product.imageUrl ? <img src={product.imageUrl} alt={product.name} class="max-h-28 object-contain" loading="lazy" /> : <span class="text-center text-xs text-neutral-400">商品画像<br />アフィリエイト連携後に表示</span>}
+      {productImageUrl ? <img src={productImageUrl} alt={product.name} class="max-h-28 object-contain" loading="lazy" /> : <div class="w-full text-center"><p class="m-0 text-[10px] font-bold tracking-[0.18em] text-neutral-400">{product.maker.toUpperCase()}</p><p class="mt-2 text-sm font-bold text-neutral-700">{product.name}</p><p class="mt-2 text-[10px] text-neutral-400">PRODUCT DATA</p></div>}
     </div>
     <div>
       <p class="mb-1 text-xs font-bold tracking-widest text-neutral-500">{product.maker}</p>
