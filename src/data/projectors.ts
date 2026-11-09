@@ -14,6 +14,15 @@ export interface Projector {
   rakutenKeyword?: string;
   /** 楽天アフィリエイトで計測IDを設定して発行したURL。発行後のURLは改変しない。 */
   rakutenAffiliateUrl?: string;
+  /**
+   * Amazon Creators API が返した画像URL。
+   * Amazonの商品ページからスクレイピングしたURLや、ダウンロードした画像は保存しない。
+   * API利用可能後は scripts/refresh-amazon-product-images.mjs で更新する。
+   */
+  amazonImageUrl?: string;
+  /** Amazon画像情報をCreators APIから最後に更新した日時。 */
+  amazonImageCheckedAt?: string;
+  /** Amazon以外の権利確認済み画像を使う場合のみ設定する。 */
   imageUrl?: string;
   checkedAt: string;
 }
