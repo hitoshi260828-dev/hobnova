@@ -4,7 +4,8 @@ description: "USB-C充電器は何Wを選べばいいのか。45W・65W・100W�
 publishDate: 2026-10-18
 category: "gadget"
 tags: ["USB-C", "USB PD", "充電器", "ノートPC"]
-draft: true
+image: "./usb-c-charging-wattage-guide-2026.webp"
+draft: false
 featured: false
 ---
 
